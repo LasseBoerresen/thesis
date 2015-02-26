@@ -1,0 +1,123 @@
+Master project definition
+
+"A BEING", in danish "et væsen"
+
+- copy learning goals,
+- Collect ideas and make realistic choices. 
+	- only state 3 will be acheived in AI4. 
+		-Right now I work double time on it, and get nowhere. I have enourmous amounts of overhead and daemons running.
+
+- Update motivation, to be more realistic
+	- What is the purpose of this project, the researh goal?
+		- Development of a living mood lamp. 
+			- Design choices based on this goal.
+			- Mood lamps are great at affecting a room. 		
+		- Learning, but also exploration of Human Robot Interaction
+		- Machine learning techinques, experience with representation learning, combinatorial learning, continuous learning, semi-supervised. 
+	- 
+
+
+
+
+
+
+
+
+
+
+- Distinquish main pillars
+	-Appearance
+		- Soft simple and elegant exterior. 
+		- Clean. Not a robot, its a being.
+		- Very stretchy fabric, so it will stay tight durin morphing.
+		- Body made out of spring. Permenently female, or male of this is the model one chooses. 
+		- 3D print spring body, like circle zigZag spring at Tek library, including fastners
+
+
+	- Movement and morphing
+		- Movement is extremely important in conveying the appearance of life,
+		- Morphing is one of the main features, both interationwise, but also folding. 
+			- It is an important feature, making Pepper special, making her a real (robot)girl.
+			- Silence is important. Yes robots makes noises when moving, but only because it is difficult not to.
+			- KISS. 5 dims. Looking up or down, changing hight, bending to the sides, twisting. 4d
+				- explore LEGO or LocoKit, in combination with 3D printing. 
+				- Contact Morten, søren kingo again, but also Koh.
+		- Mobile platorm... takes a lot to be autonomous. Should not be included. 
+			- NO MOBILE PLAFORM. counteracts the use as a living lamp.
+				- Or maybe have something simple, but expand error detection. If unable to move because stuck, have sad mood. Cry for help. ["_"]
+				- Should have a platform, in order to always turn to the sound. 
+
+	- Light
+		- Powerful RGB LED, possibly 220V bulb. 
+		- Ambient Light sensor, to adjust. 
+		- Hele kroppen lavet af led'er, kameleon funktion. 
+			- Urealistisk. Ikke grundlæggende. 
+		- 
+	
+	- Voice and sound
+		- She reacts to tone of voice
+		- she should moves to rythms, it is very natural. Use Som filter, low pass. Fourier Transform, no!.
+			- Move.
+		- Voice commands. Pepper, turn up light, turn down ligth. turn off light/go to sleep		
+			- I will not use voice commands. Ok Google could be available. OK pepper
+		- 2D sound, use for turning the right way when people speak loudly. Classify whether something is directed to Pepper, and when things are not. 			
+		- NOT 3D sound, for interaction. 
+			- Cannot track, without continuous sond. 
+			- Will only react to sound from a certain proximity. stereoscoping. 
+			- READ directional hearing article.
+			- 
+
+		- How should she react. Should she speak, or make sounds. Maybe only simulated with her movements. ... B&O
+			- She is a lamp, she should be silent. 
+				- Only movements should make sounds, making it a robot. 
+				- ALmost silent though
+
+
+	- Vision?
+ 		- Facial recognition and tracking..
+		- Placer kamera, sådan at bevægelser påvirker cameraets fokus. 
+
+	- Artificial life and mood
+		- Like a cat, a living being.
+		- meant for kids, should be bias for happiness.
+			- Essentially a lamp. These are it's features.
+		- At appropriate prximity, demand attension. 
+			- Copy of kismet. like the moving architecht lamp.
+		- 
+
+	- Learning
+		- Improving understanding of tone, unsupervised, or semi.
+			- The purpose is me learning deep and kombinatorial learning.
+			
+		- She Must only react to thing that are actually directed at her.
+			- train with her, think hundefløjte. Wireless clicker, so that things far away could also be trained.
+				- If she reacts correctly, to stimuli
+					- in which timeframe?? Maybe simply the last change of mood or posture. focus, i.e. looking a certain direction.
+ 			- 1: react correctly to tone of voice, change to correct mood, depending on current mood. 
+			- 2: react only to things actually directed at her.
+			- 3: react correctly to gestures, movements, maybe commands
+			- 4: 
+
+	- research or verification
+		- experiment with how people react and accept the lamp, in a livingroom.
+
+Essentially a living mood lamp. 
+
+
+
+
+TALK TO KOH:
+- Mechanics, how to get hight, roll pitch and yaw.
+	- Work on design yourself.  
+	- Use LocoKit. 
+	- Not metal, 3D print, use Autodesk inventor to create design.
+	- talk to Søren Kingo. 
+
+
+
+
+KISS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+- Jeg arbejder ikke effektivt, hver lille opgave tager ugevis. Sådan er det bare. Ja det kan forbedres, men ikke bare sådan lige. Det kræver vedholdenhed. Motivation. Støtte.
+
+
+
