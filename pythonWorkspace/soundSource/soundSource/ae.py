@@ -100,7 +100,7 @@ for i in range(n_episodes):
     
     cost = e/double(n_samples) 
 
-    
+    #hip
 
 
 #x = T.dvector('x')
