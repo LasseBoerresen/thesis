@@ -262,7 +262,7 @@ def main():
 
     zz = np.fft.rfft(patch)#*window)
 
-
+    
 
     zz_log = np.log(np.abs(zz))
     zz_peaks_removed, result = findFFTPeaks(zz_log)
@@ -278,7 +278,7 @@ def main():
 
     plotFFT(g,1212)
 
-
+    
 
 
     #multiply data with filter elementwise
