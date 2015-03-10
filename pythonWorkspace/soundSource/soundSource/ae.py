@@ -8,21 +8,23 @@ import scipy as sp
 
 import matplotlib.pyplot as plt
 
-from theano import *
-import theano.tensor as T
-from theano import function
+#from theano import *
+#import theano.tensor as T
+#from theano import function
 
 from skimage import data, color
 
 image = data.lena()
 grayImg = color.rgb2gray(image)
 
-n_epocs = 1
+n_epocs = 200
 w_samples = 8
 n_samples = 100
 n_hidden = 64
 lr_alpha = 1.0
 wd_lambda = 1.0
+sp_rho = 0.05
+sp_beta = 1.00
 
 image_samples = np.ndarray((n_samples,w_samples,w_samples) )
 
@@ -34,10 +36,10 @@ for i in range(n_samples):
     rand_h = np.random.uniform(low=0.0, high=np.shape(grayImg)[1]-w_samples )
     image_samples[i] = grayImg[rand_w:rand_w+w_samples,rand_h:rand_h+w_samples]
 
-#plot 20 first samples
-for i in range(20):
-    plt.subplot(4,5,i)
-    plt.imshow(image_samples[i], cmap=cm.Greys_r, interpolation='nearest')
+##plot 20 first samples
+#for i in range(20):
+#    plt.subplot(4,5,i)
+#    plt.imshow(image_samples[i], cmap=cm.Greys_r, interpolation='nearest')
 
 concImgSamps = np.ndarray((n_samples,w_samples*w_samples))
 
@@ -90,7 +92,12 @@ delta_W_bo = np.zeros(np.shape(W_bo))
 e_list = []
 
 for i in range(n_epocs):
+    print "epoc: " + str(i)
     e = 0.0
+
+    a_h_mat = np.zeros((n_samples, n_hidden))
+    a_o_mat = np.zeros((n_samples, n_out))
+
     for j in range(n_samples):
         x = concImgSamps[j]
         y = x        
@@ -98,26 +105,49 @@ for i in range(n_epocs):
         #Feed forward
         z_h = x.dot(W_ih) + b.dot(W_bh)
         a_h = 1/(1+np.exp(-z_h))
+
+        a_h_mat[j] = a_h    
         
         z_o = a_h.dot(W_ho) + b.dot(W_bo)
         a_o = 1/(1+np.exp(-z_o))
 
+        a_o_mat[j] = a_o
+
         e += 0.5*np.power(np.linalg.norm(a_o-y, ord=2),2.0)
+
+    rho_hat = np.ndarray(n_hidden)
+    
+    for j in range(n_hidden):
+        rho_hat_sum = 0.0
+        for k in range (n_samples):
+            rho_hat_sum = rho_hat_sum + a_h_mat[k,j]
+        rho_hat[j] = rho_hat_sum/double(n_samples)  
+
+
+    for j in range(n_samples):
 
         #Calculate error term for each layer, backpropagated through the weights        
         #'*' is element wise multiplocation
-        delta_o = -(y-a_o)*a_o*(1.0-a_o)
-        delta_h = (W_ho.T.dot(delta_o))*a_h*(1.0-a_h)
+                
+        e_delta_o = -(y-a_o_mat[j])*a_o_mat[j]*(1.0-a_o_mat[j])
+        e_delta_h = (W_ho.T.dot(e_delta_o) + sp_beta*(-sp_rho/rho_hat+(1-sp_rho)/(1-rho_hat)))*a_h*(1.0-a_h)
         
-        #Calculate the gradie
-        grad_W_ho = delta_o.dot(a_o.T)
-        grad_W_bo = delta_o
+        #Calculate the gradient
+        grad_W_ho = e_delta_o.dot(a_o.T)
+        grad_W_bo = e_delta_o
+        
+        grad_W_ih = e_delta_h.dot(a_h.T)
+        grad_W_bh = e_delta_h
         
         delta_W_ho = delta_W_ho + grad_W_ho
         delta_W_bo = delta_W_bo + grad_W_bo
         
         delta_W_ih = delta_W_ih + grad_W_ih
         delta_W_bh = delta_W_bh + grad_W_bh
+
+        
+        
+        
 
     W_ho = W_ho - lr_alpha*(delta_W_ho/double(n_samples) + wd_lambda*W_ho)
     W_bo = W_bo - lr_alpha*delta_W_bo/double(n_samples)
@@ -131,14 +161,44 @@ for i in range(n_epocs):
         for k in range(len(W_ih[1])):
             W_sum += np.power(W_ih[j][k],2.0)
     
-    cost = e/double(n_samples) + wd_lambda*0.5*W_sum 
+    
+    KL_div_sum = 0.0
+    for j in range(n_hidden):
+        KL_div_sum += sp_rho*np.log(sp_rho/rho_hat[j]) + (1-sp_rho)*np.log((1-sp_rho)/(1-rho_hat[j]))
+        
+    cost = e/double(n_samples) + wd_lambda*0.5*W_sum + sp_beta*KL_div_sum
 
     e_list.append(e)    
 
+figure(2)
 plt.plot(e_list)
     #hip
 
+feat_vis = np.ndarray((n_hidden,n_in))
 
+for i in range(n_hidden):
+    for j in range(n_in):
+        sum_W_ih = 0.0
+        for k in range(n_in):
+            sum_W_ih += W_ih[j,i]**2         
+        feat_vis[i,j] = W_ih[j,i]/np.sqrt(sum_W_ih)
+
+#feat_vis_img = np.ndarray()
+
+feat_vis_img = feat_vis.reshape(((n_hidden,w_samples,w_samples)))
+
+#plot the hidden features
+figure(3) 
+for i in range(n_hidden):
+    plt.subplot(np.sqrt(n_hidden),np.sqrt(n_hidden),i)
+    plt.imshow(feat_vis_img[i], cmap=cm.Greys_r, interpolation='nearest')
+
+
+
+#for i in range(n_hidden):
+#    for j in range(w_samples):
+#        for k in range(w_samples):
+#            feat_vis_img[i,j,k] = feat_vis[i,j*w_samples+k]
 #x = T.dvector('x')
 #W = T.dmatrix('W')
 #y = T.dvector('y')
