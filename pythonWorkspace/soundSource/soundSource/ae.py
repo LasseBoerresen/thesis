@@ -17,14 +17,14 @@ from skimage import data, color
 image = data.lena()
 grayImg = color.rgb2gray(image)
 
-n_epocs = 200
-w_samples = 8
+n_epocs = 500
+w_samples = 3
 n_samples = 100
-n_hidden = 64
+n_hidden = 4
 lr_alpha = 1.0
-wd_lambda = 1.0
+wd_lambda = 0.00
 sp_rho = 0.05
-sp_beta = 1.00
+sp_beta = 0.01
 
 image_samples = np.ndarray((n_samples,w_samples,w_samples) )
 
@@ -75,7 +75,7 @@ W_ho = np.ndarray((n_hidden,n_out))
 W_bo = np.ndarray((len(b),n_out))
 
 #based on suggested value from ufldl.stanford.edu
-init_epsilon = 0.01
+init_epsilon = 1.1#0.01
 
 #Initialize weigth matrices to random values to break symmetry
 W_ih = np.random.normal(loc=0.0, scale=init_epsilon**2, size=np.shape(W_ih))
@@ -84,32 +84,35 @@ W_bh = np.random.normal(loc=0.0, scale=init_epsilon**2, size=np.shape(W_bh))
 W_ho = np.random.normal(loc=0.0, scale=init_epsilon**2, size=np.shape(W_ho))
 W_bo = np.random.normal(loc=0.0, scale=init_epsilon**2, size=np.shape(W_bo))
 
-delta_W_ih = np.zeros(np.shape(W_ih))
-delta_W_bh = np.zeros(np.shape(W_bh))
-delta_W_ho = np.zeros(np.shape(W_ho))
-delta_W_bo = np.zeros(np.shape(W_bo))
+
 
 e_list = []
+W_ih_list = []
 
 for i in range(n_epocs):
     print "epoc: " + str(i)
     e = 0.0
+    
+    delta_W_ih = np.zeros(np.shape(W_ih))
+    delta_W_bh = np.zeros(np.shape(W_bh))
+    delta_W_ho = np.zeros(np.shape(W_ho))
+    delta_W_bo = np.zeros(np.shape(W_bo))
 
     a_h_mat = np.zeros((n_samples, n_hidden))
     a_o_mat = np.zeros((n_samples, n_out))
 
     for j in range(n_samples):
         x = concImgSamps[j]
-        y = x        
+        y = x
         
         #Feed forward
         z_h = x.dot(W_ih) + b.dot(W_bh)
-        a_h = 1/(1+np.exp(-z_h))
+        a_h = 1.0/(1.0+np.exp(-z_h))
 
         a_h_mat[j] = a_h    
         
         z_o = a_h.dot(W_ho) + b.dot(W_bo)
-        a_o = 1/(1+np.exp(-z_o))
+        a_o = 1.0/(1.0+np.exp(-z_o))
 
         a_o_mat[j] = a_o
 
@@ -119,7 +122,7 @@ for i in range(n_epocs):
     
     for j in range(n_hidden):
         rho_hat_sum = 0.0
-        for k in range (n_samples):
+        for k in range(n_samples):
             rho_hat_sum = rho_hat_sum + a_h_mat[k,j]
         rho_hat[j] = rho_hat_sum/double(n_samples)  
 
@@ -130,13 +133,13 @@ for i in range(n_epocs):
         #'*' is element wise multiplocation
                 
         e_delta_o = -(y-a_o_mat[j])*a_o_mat[j]*(1.0-a_o_mat[j])
-        e_delta_h = (W_ho.T.dot(e_delta_o) + sp_beta*(-sp_rho/rho_hat+(1-sp_rho)/(1-rho_hat)))*a_h*(1.0-a_h)
+        e_delta_h = (W_ho.dot(e_delta_o) + sp_beta*(-sp_rho/rho_hat + (1-sp_rho)/(1-rho_hat)))*a_h_mat[j]*(1.0-a_h_mat[j])
         
         #Calculate the gradient
-        grad_W_ho = e_delta_o.dot(a_o.T)
+        grad_W_ho = e_delta_o*a_o_mat[j]
         grad_W_bo = e_delta_o
         
-        grad_W_ih = e_delta_h.dot(a_h.T)
+        grad_W_ih = e_delta_h*a_h_mat[j]
         grad_W_bh = e_delta_h
         
         delta_W_ho = delta_W_ho + grad_W_ho
@@ -152,13 +155,15 @@ for i in range(n_epocs):
     W_ho = W_ho - lr_alpha*(delta_W_ho/double(n_samples) + wd_lambda*W_ho)
     W_bo = W_bo - lr_alpha*delta_W_bo/double(n_samples)
 
+    W_ih_list.append(W_ih[0,0])    
+    
     W_ih = W_ih - lr_alpha*(delta_W_ih/double(n_samples) + wd_lambda*W_ih)
     W_bh = W_bh - lr_alpha*delta_W_bh/double(n_samples)
 
 
     W_sum = 0.0
-    for j in range(len(W_ih[0])):
-        for k in range(len(W_ih[1])):
+    for j in range(np.shape(W_ih)[0]):
+        for k in range(np.shape(W_ih)[1]):
             W_sum += np.power(W_ih[j][k],2.0)
     
     
@@ -170,6 +175,11 @@ for i in range(n_epocs):
 
     e_list.append(e)    
 
+
+figure(1)
+plt.plot(W_ih_list)
+
+
 figure(2)
 plt.plot(e_list)
     #hip
@@ -177,15 +187,17 @@ plt.plot(e_list)
 feat_vis = np.ndarray((n_hidden,n_in))
 
 for i in range(n_hidden):
+    sum_W_ih = 0.0
     for j in range(n_in):
-        sum_W_ih = 0.0
-        for k in range(n_in):
-            sum_W_ih += W_ih[j,i]**2         
+        sum_W_ih += W_ih[j,i]**2.0         
+    for j in range(n_in):
         feat_vis[i,j] = W_ih[j,i]/np.sqrt(sum_W_ih)
 
 #feat_vis_img = np.ndarray()
 
 feat_vis_img = feat_vis.reshape(((n_hidden,w_samples,w_samples)))
+
+
 
 #plot the hidden features
 figure(3) 
