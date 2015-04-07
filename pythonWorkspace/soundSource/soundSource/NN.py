@@ -19,17 +19,24 @@ from skimage import data, color
 image = data.lena()
 grayImg = color.rgb2gray(image)
 
-n_epocs = 50
-w_samples = 2
-n_samples = 10000
-n_hidden = 2
-lr_alpha = 1.0
+n_epocs = 1000
+w_samples = 3
+n_samples = 1000
+n_hidden = 9    
+lr_alpha = 10.0
 wd_lambda = 0.00
 sp_rho = 0.05
 sp_beta = 0.01
 
 image_samples = np.ndarray((n_samples,w_samples,w_samples) )
 
+
+#class NNet():
+#    def __init__(self.):
+#        
+#        
+#    def feedForward(self,):
+        
 #np.random.seed(1)
 
 #Sample random cut-outs
@@ -67,7 +74,8 @@ concImgSampsPCA = pca.transform(concImgSamps)
 
 
 #Declare input and bias vectors
-x = np.ndarray(len(concImgSampsPCA[0]))
+x = np.ndarray(len(concImgSamps[0]))
+#x = np.ndarray(len(concImgSampsPCA[0]))
 b = np.ndarray(1)
 b[0] = 1.00
 
@@ -110,7 +118,9 @@ for i in range(n_epocs):
     a_o_mat = np.zeros((n_samples, n_out))
 
     for j in range(n_samples):
-        x = concImgSampsPCA[j]
+        #x = concImgSampsPCA[j]
+                
+        x = concImgSamps[j]
         y = x
         
         #Feed forward
@@ -137,16 +147,44 @@ for i in range(n_epocs):
 
     for j in range(n_samples):
 
+        #OBS
+        #USE LGBH OPTIMIZER FUNCTION INSTEAD OF BACKPROPAGATION.
+        #OBS
+
         #Calculate error term for each layer, backpropagated through the weights        
         #'*' is element wise multiplocation
                 
         e_delta_o = -(y-a_o_mat[j])*a_o_mat[j]*(1.0-a_o_mat[j])
-        e_delta_h = (W_ho.dot(e_delta_o) + sp_beta*(-sp_rho/rho_hat + (1.0-sp_rho)/(1.0-rho_hat)))*a_h_mat[j]*(1.0-a_h_mat[j])
+#        e_delta_h = (W_ho.dot(e_delta_o) + sp_beta*(-sp_rho/rho_hat + (1-sp_rho)/(1-rho_hat)))*a_h_mat[j]*(1.0-a_h_mat[j])
+        e_delta_h = (W_ho.dot(e_delta_o))*a_h_mat[j]*(1.0-a_h_mat[j])
+
         
         #Calculate the gradient
         grad_W_ho = e_delta_o*a_o_mat[j]
         grad_W_bo = e_delta_o
+     
+##########   Gradient Checking  
+     
+     
+        for k in range(len(W))
+        x = concImgSamps[j]
+        y = x
         
+        #Feed forward
+        z_h = x.dot(W_ih) + b.dot(W_bh)
+        a_h = 1.0/(1.0+np.exp(-z_h))
+
+        z_o = a_h.dot(W_ho) + b.dot(W_bo)
+        a_o = 1.0/(1.0+np.exp(-z_o))
+
+        e_j = 0.5*np.power(np.linalg.norm(a_o-y, ord=2),2.0)
+        
+        
+        gradDiff = []
+        gradDiff
+
+##################        
+    
         grad_W_ih = e_delta_h*a_h_mat[j]
         grad_W_bh = e_delta_h
         
@@ -177,11 +215,11 @@ for i in range(n_epocs):
     
     KL_div_sum = 0.0
     for j in range(n_hidden):
-        KL_div_sum += sp_rho*np.log(sp_rho/rho_hat[j]) + (1.0-sp_rho)*np.log((1-sp_rho)/(1.0-rho_hat[j]))
+        KL_div_sum += sp_rho*np.log(sp_rho/rho_hat[j]) + (1-sp_rho)*np.log((1-sp_rho)/(1-rho_hat[j]))
         
     cost = e/double(n_samples) + wd_lambda*0.5*W_sum + sp_beta*KL_div_sum
 
-    e_list.append(e)    
+    e_list.append(e/double(n_samples))    
 
 
 figure(1)
@@ -210,7 +248,9 @@ for i in range(n_hidden):
 
 #transform hidden layer features based on pca features back to input space.
 feat_vis_nonPCA = pca.inverse_transform(feat_vis)
-feat_vis_img = feat_vis_nonPCA.reshape(((n_hidden,w_samples,w_samples)))
+#feat_vis_img = feat_vis_nonPCA.reshape(((n_hidden,w_samples,w_samples)))
+
+feat_vis_img = feat_vis.reshape(((n_hidden,w_samples,w_samples)))
 
 
 
@@ -221,7 +261,9 @@ for i in range(n_hidden):
     plt.imshow(feat_vis_img[i], cmap=cm.Greys_r, interpolation='nearest')
 
 
-x = concImgSampsPCA[0]
+#x = concImgSampsPCA[0]
+
+x = concImgSamps[0]
 
 z_h = x.dot(W_ih) + b.dot(W_bh)
 a_h = 1.0/(1.0+np.exp(-z_h))
@@ -233,8 +275,11 @@ a_o = 1.0/(1.0+np.exp(-z_o))
 
 #a_o_mat[j] = a_o
 
-x_img = np.reshape(pca.inverse_transform(x),(np.sqrt(n_in),np.sqrt(n_in)))
-a_o_img = np.reshape(pca.inverse_transform(a_o),(np.sqrt(n_in),np.sqrt(n_in)))
+
+#x_img = np.reshape(pca.inverse_transform(x),(np.sqrt(n_in),np.sqrt(n_in)))
+#a_o_img = np.reshape(pca.inverse_transform(a_o),(np.sqrt(n_in),np.sqrt(n_in)))
+x_img = np.reshape(x,(np.sqrt(n_in),np.sqrt(n_in)))
+a_o_img = np.reshape(a_o,(np.sqrt(n_in),np.sqrt(n_in)))
 
 figure(4)
 plt.subplot(121)
