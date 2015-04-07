@@ -8,6 +8,8 @@ import scipy as sp
 
 import matplotlib.pyplot as plt
 
+from sklearn import decomposition
+
 #from theano import *
 #import theano.tensor as T
 #from theano import function
@@ -17,10 +19,10 @@ from skimage import data, color
 image = data.lena()
 grayImg = color.rgb2gray(image)
 
-n_epocs = 500
-w_samples = 3
-n_samples = 100
-n_hidden = 4
+n_epocs = 100
+w_samples = 8
+n_samples = 1000
+n_hidden = 100
 lr_alpha = 1.0
 wd_lambda = 0.00
 sp_rho = 0.05
@@ -51,6 +53,11 @@ for i in range(n_samples):
     
 
 #Whiten!
+pca = decomposition.PCA(whiten=True)
+pca.fit(concImgSamps)
+
+concImgSampsPCA = pca.transform(concImgSamps)
+
 
 #Repeat
 #Run through all samples
@@ -58,8 +65,9 @@ for i in range(n_samples):
 #calculate error
 #backpropagate error derivative
 
+
 #Declare input and bias vectors
-x = np.ndarray(len(concImgSamps[0]))
+#x = np.ndarray(len(concImgSampsPCA[0]))
 b = np.ndarray(1)
 b[0] = 1.00
 
@@ -102,7 +110,7 @@ for i in range(n_epocs):
     a_o_mat = np.zeros((n_samples, n_out))
 
     for j in range(n_samples):
-        x = concImgSamps[j]
+        x = concImgSampsPCA[j]
         y = x
         
         #Feed forward
@@ -178,6 +186,11 @@ for i in range(n_epocs):
 
 figure(1)
 plt.plot(W_ih_list)
+
+
+
+#REMEMBER TO TEST USING A SEPARATE TEST SET
+#AND TRAIN USING A VALIDATION SET
 
 
 figure(2)

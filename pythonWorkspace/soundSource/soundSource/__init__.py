@@ -135,8 +135,34 @@ class soundCleaver:
 
         self.soundLabelDataBase.append(classLabel)
 #        self.srDataBase.append(sr)
-        
 
+
+    def phaseShiftMono(self,soundArr,theta):
+
+        speedOfSound = 344.0
+        a = 0.013
+        b = 1.000        
+        
+        distL = np.sqrt((a/2.0)**2.0 + b**2.0 - 2*(a/2.0)*b*np.cos(np.pi/2.0 - theta))
+        distR = np.sqrt((a/2.0)**2.0 + b**2.0 - 2*(a/2.0)*b*np.cos(np.pi/2.0 + theta))
+    
+        distDiff = distR - distL
+        timeDiff = np.abs(distDiff/speedOfSound)
+        sampleShiftSize = int(self.sr*timeDiff)
+        sampleShift = np.zeros(sampleShiftSize) 
+
+        right = np.ndarray(sampleShiftSize+len(soundArr))
+        left = np.ndarray(sampleShiftSize+len(soundArr))        
+        
+        if theta > 0.0:
+            right = np.concatenate((sampleShift,soundArr))
+            left = np.concatenate((soundArr,sampleShift))
+        else:
+            left = np.concatenate((sampleShift,soundArr))
+            right = np.concatenate((soundArr,sampleShift))
+                        
+        
+           
     #to use the images most easily for inputs to a NN, they are unravelled from 8x8 to 64x1,
     #and then concatenated so each column is another image.        
     def concatenateSoundPatches(self):        
