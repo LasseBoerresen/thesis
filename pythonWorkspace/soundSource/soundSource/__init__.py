@@ -136,33 +136,66 @@ class soundCleaver:
         self.soundLabelDataBase.append(classLabel)
 #        self.srDataBase.append(sr)
 
-
+    #Given an angle as input, phase shift a mono signal to create a simulated directional stereo sound signal.
     def phaseShiftMono(self,soundArr,theta):
 
         speedOfSound = 344.0
-        a = 0.013
+        a = 0.013 #Without lizard ears, could be much bigger.
         b = 1.000        
         
+        # calculation of distance to each microphone, given 'b' distance from center.
         distL = np.sqrt((a/2.0)**2.0 + b**2.0 - 2*(a/2.0)*b*np.cos(np.pi/2.0 - theta))
         distR = np.sqrt((a/2.0)**2.0 + b**2.0 - 2*(a/2.0)*b*np.cos(np.pi/2.0 + theta))
-    
+
+        #calculate time difference
         distDiff = distR - distL
         timeDiff = np.abs(distDiff/speedOfSound)
+        
+        #calculate difference in number of samples, and create small silent sound piece, to add.
         sampleShiftSize = int(self.sr*timeDiff)
         sampleShift = np.zeros(sampleShiftSize) 
 
+        #initiate the stereo channels of correct length
         right = np.ndarray(sampleShiftSize+len(soundArr))
         left = np.ndarray(sampleShiftSize+len(soundArr))        
         
+        #dependent on positive or negative angle, add the sampleShift ad appropriate end of sample.
         if theta > 0.0:
             right = np.concatenate((sampleShift,soundArr))
             left = np.concatenate((soundArr,sampleShift))
         else:
             left = np.concatenate((sampleShift,soundArr))
             right = np.concatenate((soundArr,sampleShift))
-                        
         
-           
+        return (right,left)                
+        
+        
+        
+    # Find characteristic peaks, and calculate distances, or feed both channels into nn at train it to find direction.     
+    #Brute force. substract snippet from longer sample to find minimum difference, this gives time difference.
+    def directionFromTimeDiff(self,tDiff):
+        speedOfSound = 344.0
+        a = 0.013 #Without lizard ears, could be much bigger.
+        b = 1.000 
+        
+        
+        dDiff = tDiff*speedOfSound
+        #Distance is alwasy 
+        distR = dDiff/2.0
+        distL = dDiff/2.0*(-1.0)
+        
+        theta = np.pi/2.0 - np.arccos(((a/2.0)**2.0 + b**2.0 - distL)/2.0*(a/2.0)*b)        
+        
+        return theta
+        
+  
+    # Could use RanSaC to find first position, then that 3D alignment code. 
+    def timeDiffFromStereo(self, ):
+        
+
+
+      
+        
     #to use the images most easily for inputs to a NN, they are unravelled from 8x8 to 64x1,
     #and then concatenated so each column is another image.        
     def concatenateSoundPatches(self):        

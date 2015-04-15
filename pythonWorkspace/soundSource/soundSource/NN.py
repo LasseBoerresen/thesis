@@ -22,9 +22,9 @@ grayImg = color.rgb2gray(image)
 n_epocs = 1000
 w_samples = 3
 n_samples = 1000
-n_hidden = 9    
-lr_alpha = 10.0
-wd_lambda = 0.00
+n_hidden = 4
+lr_alpha = 0.5
+wd_lambda = 0.0
 sp_rho = 0.05
 sp_beta = 0.01
 
@@ -154,46 +154,51 @@ for i in range(n_epocs):
         #Calculate error term for each layer, backpropagated through the weights        
         #'*' is element wise multiplocation
                 
-        e_delta_o = -(y-a_o_mat[j])*a_o_mat[j]*(1.0-a_o_mat[j])
+        e_delta_o = -(concImgSamps[j]-a_o_mat[j])*a_o_mat[j]*(1.0-a_o_mat[j])
 #        e_delta_h = (W_ho.dot(e_delta_o) + sp_beta*(-sp_rho/rho_hat + (1-sp_rho)/(1-rho_hat)))*a_h_mat[j]*(1.0-a_h_mat[j])
         e_delta_h = (W_ho.dot(e_delta_o))*a_h_mat[j]*(1.0-a_h_mat[j])
 
         
         #Calculate the gradient
-        grad_W_ho = e_delta_o*a_o_mat[j]
+        grad_W_ho = np.outer(a_h_mat[j],e_delta_o) #np.outer is used to force treating the vectors as matrices 9x1 * 1x9 = 9x9
         grad_W_bo = e_delta_o
-     
-##########   Gradient Checking  
-     
-     
-        for k in range(len(W))
-        x = concImgSamps[j]
-        y = x
-        
-        #Feed forward
-        z_h = x.dot(W_ih) + b.dot(W_bh)
-        a_h = 1.0/(1.0+np.exp(-z_h))
-
-        z_o = a_h.dot(W_ho) + b.dot(W_bo)
-        a_o = 1.0/(1.0+np.exp(-z_o))
-
-        e_j = 0.5*np.power(np.linalg.norm(a_o-y, ord=2),2.0)
-        
-        
-        gradDiff = []
-        gradDiff
-
-##################        
     
-        grad_W_ih = e_delta_h*a_h_mat[j]
+        grad_W_ih = np.outer(concImgSamps[j],e_delta_h)
         grad_W_bh = e_delta_h
         
         delta_W_ho = delta_W_ho + grad_W_ho
         delta_W_bo = delta_W_bo + grad_W_bo
         
+        
         delta_W_ih = delta_W_ih + grad_W_ih
         delta_W_bh = delta_W_bh + grad_W_bh
 
+
+    
+
+
+###########   Gradient Checking  a(l
+#     
+#     
+#        for k in range(len(W_ih[0])):
+#            for l in range(len(W_ih[1])):
+#                x = concImgSamps[j]
+#                y = x
+#                
+#                #Feed forward
+#                z_h = x.dot(W_ih) + b.dot(W_bh)
+#                a_h = 1.0/(1.0+np.exp(-z_h))
+#        
+#                z_o = a_h.dot(W_ho) + b.dot(W_bo)
+#                a_o = 1.0/(1.0+np.exp(-z_o))
+#        
+#                e_j = 0.5*np.power(np.linalg.norm(a_o-y, ord=2),2.0)
+#                
+#                
+#                gradDiff = []
+#                gradDiff
+#
+###################        
         
         
         
@@ -247,7 +252,7 @@ for i in range(n_hidden):
 #feat_vis_img = np.ndarray()
 
 #transform hidden layer features based on pca features back to input space.
-feat_vis_nonPCA = pca.inverse_transform(feat_vis)
+######feat_vis_nonPCA = pca.inverse_transform(feat_vis)
 #feat_vis_img = feat_vis_nonPCA.reshape(((n_hidden,w_samples,w_samples)))
 
 feat_vis_img = feat_vis.reshape(((n_hidden,w_samples,w_samples)))
@@ -258,34 +263,35 @@ feat_vis_img = feat_vis.reshape(((n_hidden,w_samples,w_samples)))
 figure(3) 
 for i in range(n_hidden):
     plt.subplot(np.sqrt(n_hidden),np.sqrt(n_hidden),i)
-    plt.imshow(feat_vis_img[i], cmap=cm.Greys_r, interpolation='nearest')
+    plt.imshow(feat_vis_img[i], cmap=cm.Greys_r, interpolation='nearest', vmin=0.0, vmax=1.0)
 
 
 #x = concImgSampsPCA[0]
 
-x = concImgSamps[0]
-
-z_h = x.dot(W_ih) + b.dot(W_bh)
-a_h = 1.0/(1.0+np.exp(-z_h))
-
-#a_h_mat[j] = a_h    
-
-z_o = a_h.dot(W_ho) + b.dot(W_bo)
-a_o = 1.0/(1.0+np.exp(-z_o))
-
-#a_o_mat[j] = a_o
-
-
-#x_img = np.reshape(pca.inverse_transform(x),(np.sqrt(n_in),np.sqrt(n_in)))
-#a_o_img = np.reshape(pca.inverse_transform(a_o),(np.sqrt(n_in),np.sqrt(n_in)))
-x_img = np.reshape(x,(np.sqrt(n_in),np.sqrt(n_in)))
-a_o_img = np.reshape(a_o,(np.sqrt(n_in),np.sqrt(n_in)))
-
 figure(4)
-plt.subplot(121)
-plt.imshow(x_img, cmap=cm.Greys_r, interpolation='nearest')
-plt.subplot(122)
-plt.imshow(a_o_img, cmap=cm.Greys_r, interpolation='nearest')
+for i in range(10):
+    x = concImgSamps[i]
+    
+    z_h = x.dot(W_ih) + b.dot(W_bh)
+    a_h = 1.0/(1.0+np.exp(-z_h))
+    
+    #a_h_mat[j] = a_h    
+    
+    z_o = a_h.dot(W_ho) + b.dot(W_bo)
+    a_o = 1.0/(1.0+np.exp(-z_o))
+    
+    #a_o_mat[j] = a_o
+    
+    
+    #x_img = np.reshape(pca.inverse_transform(x),(np.sqrt(n_in),np.sqrt(n_in)))
+    #a_o_img = np.reshape(pca.inverse_transform(a_o),(np.sqrt(n_in),np.sqrt(n_in)))
+    x_img = np.reshape(x,(np.sqrt(n_in),np.sqrt(n_in)))
+    a_o_img = np.reshape(a_o,(np.sqrt(n_in),np.sqrt(n_in)))
+    
+    plt.subplot(10,2,2*i-1)
+    plt.imshow(x_img, cmap=cm.Greys_r, interpolation='nearest', vmin=0.0, vmax=1.0)
+    plt.subplot(10,2,2*i)
+    plt.imshow(a_o_img, cmap=cm.Greys_r, interpolation='nearest', vmin=0.0, vmax=1.0)
 
 figure(5)
 plt.plot(np.reshape(W_ih,(np.shape(W_ih)[0]*np.shape(W_ih)[1])))
