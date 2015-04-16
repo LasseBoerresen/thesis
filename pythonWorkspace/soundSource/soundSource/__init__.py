@@ -148,6 +148,7 @@ class soundCleaver:
         distR = np.sqrt((a/2.0)**2.0 + b**2.0 - 2*(a/2.0)*b*np.cos(np.pi/2.0 + theta))
 
         #calculate time difference
+        #if direction is left, timeDiff is positive
         distDiff = distR - distL
         timeDiff = np.abs(distDiff/speedOfSound)
         
@@ -190,15 +191,45 @@ class soundCleaver:
         
   
     # Could use RanSaC to find first position, then that 3D alignment code. 
-    def timeDiffFromStereo(self, ):
+    #   However, I only need to check along one axis, time, frequency or amplitude is not shiftet.... amplitude could however be shifted when including this aspect. However, it is not so much shifted as it is scaled. amplitude will not go below zero... 
+    # Find overlap in frequency domain, i.e. spectrogram. 
+    #OBS: if continous sound with not change in frequency over time.  
+    def timeDiffFromStereo(self, rightImg, leftImg):
+        winSize = 10
+        sgWinSize = 30 #ms
+
+        #DESTROY 
+#        rightImg = np.ndarray([100,500])
+#        leftImg = np.ndarray([100,500])        
         
+        #extract window of lenth winSize along time axis, from center, to maximize chance of finding overlap.
+        window = rightImg[:,len(rightImg[0])/2-winSize/2:len(rightImg[0])/2+winSize/2]
 
-
-      
+        minVal = double('inf')
+        minPos
+        #find minimum squeared difference between window and spectrogram
+        for i in range(len(rightImg[0])-winSize):
+            #difference is found as vector norm of all differences.
+            diff = 0.5*np.power(np.linalg.norm(np.reshape(leftImg[:,i:i+winSize] - window, [len(window[0])*len(window[1])]), ord=2), 2.0)
+            if diff < minVal:
+                minVal = diff
+                minPos = i
+        
+        #if direction is from left, tDiff is positive
+        tDiff = (len(rightImg[0])/2 - minPos)*sgWinSize
+        return tDiff
+        
+        
+    # the above function can only find direction of sound where frequencies change. So at start of sine wave, or of speach...
+    # Direction is much better estimated using difference in sound amplitude due to microphone directionality and sound blocking.
+    #   To get function of sound amplitude difference at varieing directions and frequencies, simply measure with real setup.
+    #Firstly, simply use difference in RMS    
+    def 
+    
         
     #to use the images most easily for inputs to a NN, they are unravelled from 8x8 to 64x1,
-    #and then concatenated so each column is another image.        
-    def concatenateSoundPatches(self):        
+    #and then concatenated so each column is another image.  
+    def concatenateSoundPatches(self):
 #        imgArray = np.array([[]])
         concSoundArrayT = np.transpose(self.concSoundArray)
         
