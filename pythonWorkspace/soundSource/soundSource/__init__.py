@@ -55,11 +55,11 @@ import pickle
 
 class soundCleaver:
     def __init__(self):
-        self.sr = 48000#8000        
+        self.sr = 8000#48000#8000        
         #self.numImages = 1
-        self.numPatches = 200 #5000
+        self.numPatches = 10 #5000
 #        print('num samples: \n',int(2.0*self.sr))#int(1*self.sr))
-        self.sizePatches = int(1.00*self.sr)#in seconds. Multiply with sampleRate, sr, to get number of saples in patch    #8 must be equal number, to be able to split in half later
+        self.sizePatches = int(0.50*self.sr)#in seconds. Multiply with sampleRate, sr, to get number of saples in patch    #8 must be equal number, to be able to split in half later
         self.soundDataBase = []
         self.soundLabelDataBase = []
 
@@ -85,10 +85,14 @@ class soundCleaver:
 #        self.addToSoundDataBase('Angry reading2.wav',3)
 #        self.addToSoundDataBase('Angry reading3.wav',3)
 
-        self.addToSoundDataBase('sineMix.wav',0)
+        ################################################
+        ##for separating multiple sines. 
+        #self.addToSoundDataBase('sineMix.wav',0)
                 
-        
-
+        #################################################
+        ##For 
+        self.addToSoundDataBase('Happy reading 1.wav',0)
+                
 
         
 
@@ -196,8 +200,8 @@ class soundCleaver:
     #OBS: if continous sound with not change in frequency over time.  
     def timeDiffFromStereo(self, rightImg, leftImg):
         winSize = 10
-        sgWinSize = 30 #ms
-
+        sgWinSize = 0.03 # 30ms
+        
         #DESTROY 
 #        rightImg = np.ndarray([100,500])
 #        leftImg = np.ndarray([100,500])        
@@ -224,7 +228,7 @@ class soundCleaver:
     # Direction is much better estimated using difference in sound amplitude due to microphone directionality and sound blocking.
     #   To get function of sound amplitude difference at varieing directions and frequencies, simply measure with real setup.
     #Firstly, simply use difference in RMS    
-    def 
+    #def  
     
         
     #to use the images most easily for inputs to a NN, they are unravelled from 8x8 to 64x1,
@@ -345,48 +349,92 @@ def findFFTPeaks(z):
 def main():
     sc = soundCleaver()
 
-    
+
+##############################################################
+#for estimating direction of complex sound piece.
+###############################################################    
+    #get random sound patch, 2 seconds long    
     patch = sc.patchDataBase[0]
 
-    #window = np.hamming(len(patch))
+    rightPatch,leftPatch = sc.phaseShiftMono(patch,np.pi/3.5)
 
-    zz = np.fft.rfft(patch)#*window)
+    #get spectrogram from patch
+    rightSpec = sc.spectrogramFromPatch(rightPatch)
+    leftSpec = sc.spectrogramFromPatch(leftPatch)
+    #show spectrogram
 
-    
-
-    zz_log = np.log(np.abs(zz))
-    zz_peaks_removed, result = findFFTPeaks(zz_log)
-
-    print result
-    
-    zz_fil_list = []
-    zz_filtered = np.ndarray(np.shape(zz))
-    #for i in range(len(zz)):
-        
-    g = gaussian(result[0][0],len(zz)/32,len(zz))
-    g = normalizeList(g)
-
-    plotFFT(g,1212)
-
+    figure(0)
+    plt.subplot(2,1,0)
+    plt.imshow(leftSpec)
+    plt.subplot(2,1,1)
+    plt.imshow(rightSpec)
     
 
 
-    #multiply data with filter elementwise
-    for j in range(len(zz)):
-        zz_filtered[j] = zz[j]*g[j]
 
-    plotFFT(zz_filtered,1)
+##############################################################
+###############################################################    
 
-    xx = np.fft.irfft(zz_filtered)
 
-    xxx = np.ndarray(np.shape(patch),dtype=int32)       
-    
-    for i in range(len(xx)):
-        xxx[i] = int(xx[i])
 
-    sp.io.wavfile.write("patch.wav", 48000, patch)
-    
-    sp.io.wavfile.write("fft.wav", 48000, xxx)
+
+
+##############################################################
+#for separating multiple peaks
+###############################################################    
+#    patch = sc.patchDataBase[0]
+#
+#    #window = np.hamming(len(patch))
+#
+#    zz = np.fft.rfft(patch)#*window)
+#
+#    
+#
+#    zz_log = np.log(np.abs(zz))
+#    zz_peaks_removed, result = findFFTPeaks(zz_log)
+#
+#    print result
+#    
+#    zz_fil_list = []
+#    zz_filtered = np.ndarray(np.shape(zz))
+#    #for i in range(len(zz)):
+#        
+#    g = gaussian(result[0][0],len(zz)/32,len(zz))
+#    g = normalizeList(g)
+#
+#    plotFFT(g,1212)
+#
+#    
+#
+#
+#    #multiply data with filter elementwise
+#    for j in range(len(zz)):
+#        zz_filtered[j] = zz[j]*g[j]
+#
+#    plotFFT(zz_filtered,1)
+#
+#    xx = np.fft.irfft(zz_filtered)
+#
+#    xxx = np.ndarray(np.shape(patch),dtype=int32)       
+#    
+#    for i in range(len(xx)):
+#        xxx[i] = int(xx[i])
+#
+#    sp.io.wavfile.write("patch.wav", 48000, patch)
+#    
+#    sp.io.wavfile.write("fft.wav", 48000, xxx)
+##################################################################
+###################################################################
+
+
+
+
+
+
+
+
+
+
 
 
 #    #transform patch into frequency domain
