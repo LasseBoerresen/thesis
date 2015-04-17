@@ -144,8 +144,8 @@ class soundCleaver:
     def phaseShiftMono(self,soundArr,theta):
 
         speedOfSound = 344.0
-        a = 100.00 #Without lizard ears, could be much bigger.
-        b = 10000.000        
+        a = 0.20 #Without lizard ears, could be much bigger.
+        b = 10.000        
         
         # calculation of distance to each microphone, given 'b' distance from center.
         distL = np.sqrt((a/2.0)**2.0 + b**2.0 - 2*(a/2.0)*b*np.cos(np.pi/2.0 - theta))
@@ -188,8 +188,8 @@ class soundCleaver:
     #Brute force. substract snippet from longer sample to find minimum difference, this gives time difference.
     def directionFromTimeDiff(self,tDiff):
         speedOfSound = 344.0
-        a = 100.00 #Without lizard ears, could be much bigger.
-        b = 10000.000 
+        a = 0.20 #Without lizard ears, could be much bigger.
+        b = 10.000 
         
         
         dDiff = tDiff*speedOfSound
@@ -211,12 +211,46 @@ class soundCleaver:
         
         return theta
         
+
+
+    def timeDiffFromStereo(self, right, left):
+        winSize = 10
+        sgWinStep = 0.005 # shold be time between each spec window, which is winms
+        
+        #DESTROY 
+#        rightImg = np.ndarray([100,500])
+#        leftImg = np.ndarray([100,500])        
+        
+        #extract window of lenth winSize along time axis, from center, to maximize chance of finding overlap.
+        window = right[len(right)/2-winSize/2:len(right)/2+winSize/2]
+
+        
+        minVal = double('inf')
+        minPos = 0
+        #find minimum squeared difference between window and spectrogram
+        for i in range(len(right)-winSize):
+            #difference is found as vector norm of all differences.
+            flatWindow = left[i:i+winSize] - window            
+            diff = 0.5*np.power(np.linalg.norm(flatWindow, ord=2), 2.0)
+            if diff < minVal:
+                minVal = diff
+                minPos = i
+        
+
+        #if direction is from left, tDiff is positive
+        tDiff = (len(right)/2 -winSize/2 - minPos)/double(self.sr)
+        
+        return tDiff
+
+
+
+
   
     # Could use RanSaC to find first position, then that 3D alignment code. 
     #   However, I only need to check along one axis, time, frequency or amplitude is not shiftet.... amplitude could however be shifted when including this aspect. However, it is not so much shifted as it is scaled. amplitude will not go below zero... 
     # Find overlap in frequency domain, i.e. spectrogram. 
     #OBS: if continous sound with not change in frequency over time.  
-    def timeDiffFromStereo(self, rightImg, leftImg):
+    def timeDiffFromStereoImg(self, rightImg, leftImg):
         winSize = 10
         sgWinStep = 0.005 # shold be time between each spec window, which is winms
         
@@ -377,7 +411,7 @@ def main():
     #get random sound patch, 2 seconds long    
     patch = sc.patchDataBase[0]
 
-    theta = np.pi/(2.5*2)
+    theta = np.pi/(2.0)*0.3
 
     rightPatch,leftPatch = sc.phaseShiftMono(patch, theta)#np.pi/2.5)
 
@@ -398,13 +432,14 @@ def main():
     #get time difference from spectrogram.
     print    
     print "timeDiff"    
-    tDiff =  sc.timeDiffFromStereo(rightSpec,leftSpec)    
+    tDiff =  sc.timeDiffFromStereo(rightPatch,leftPatch)    
     print tDiff
 
     thetaHat = sc.directionFromTimeDiff(tDiff)
     print
     print "real direction"
     print theta
+    print
     print "measured direction"
     print thetaHat
 
