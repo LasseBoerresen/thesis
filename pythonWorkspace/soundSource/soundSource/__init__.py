@@ -144,8 +144,8 @@ class soundCleaver:
     def phaseShiftMono(self,soundArr,theta):
 
         speedOfSound = 344.0
-        a = 0.013 #Without lizard ears, could be much bigger.
-        b = 1.000        
+        a = 100.00 #Without lizard ears, could be much bigger.
+        b = 10000.000        
         
         # calculation of distance to each microphone, given 'b' distance from center.
         distL = np.sqrt((a/2.0)**2.0 + b**2.0 - 2*(a/2.0)*b*np.cos(np.pi/2.0 - theta))
@@ -154,15 +154,23 @@ class soundCleaver:
         #calculate time difference
         #if direction is left, timeDiff is positive
         distDiff = distR - distL
+        print distDiff
         timeDiff = np.abs(distDiff/speedOfSound)
+
+        print timeDiff
         
         #calculate difference in number of samples, and create small silent sound piece, to add.
         sampleShiftSize = int(self.sr*timeDiff)
-        sampleShift = np.zeros(sampleShiftSize) 
+        print sampleShiftSize
+#        sampleShift = np.zeros(sampleShiftSize) 
+        epsilon = np.mean(soundArr)/5.0
+        sampleShift = np.random.normal(loc=0.0, scale=epsilon**2.0, size=(sampleShiftSize))
+
+
 
         #initiate the stereo channels of correct length
         right = np.ndarray(sampleShiftSize+len(soundArr))
-        left = np.ndarray(sampleShiftSize+len(soundArr))        
+        left = np.ndarray(sampleShiftSize+len(soundArr))       
         
         #dependent on positive or negative angle, add the sampleShift ad appropriate end of sample.
         if theta > 0.0:
@@ -180,8 +188,8 @@ class soundCleaver:
     #Brute force. substract snippet from longer sample to find minimum difference, this gives time difference.
     def directionFromTimeDiff(self,tDiff):
         speedOfSound = 344.0
-        a = 0.013 #Without lizard ears, could be much bigger.
-        b = 1.000 
+        a = 100.00 #Without lizard ears, could be much bigger.
+        b = 10000.000 
         
         
         dDiff = tDiff*speedOfSound
@@ -189,7 +197,17 @@ class soundCleaver:
         distR = dDiff/2.0
         distL = dDiff/2.0*(-1.0)
         
-        theta = np.pi/2.0 - np.arccos(((a/2.0)**2.0 + b**2.0 - distL)/2.0*(a/2.0)*b)        
+        print
+        print distR
+        print distL        
+        
+        print "c"
+
+        cosC = ((a/2.0)**2.0 + b**2.0 - (distL+b)**2.0)/(2.0*(a/2.0)*b)        
+        print "cosC"
+        print cosC
+        
+        theta = np.pi/2.0 - np.arccos(cosC)        
         
         return theta
         
@@ -200,7 +218,7 @@ class soundCleaver:
     #OBS: if continous sound with not change in frequency over time.  
     def timeDiffFromStereo(self, rightImg, leftImg):
         winSize = 10
-        sgWinSize = 0.03 # 30ms
+        sgWinStep = 0.005 # shold be time between each spec window, which is winms
         
         #DESTROY 
 #        rightImg = np.ndarray([100,500])
@@ -209,18 +227,21 @@ class soundCleaver:
         #extract window of lenth winSize along time axis, from center, to maximize chance of finding overlap.
         window = rightImg[:,len(rightImg[0])/2-winSize/2:len(rightImg[0])/2+winSize/2]
 
+        
         minVal = double('inf')
-        minPos
+        minPos = 0
         #find minimum squeared difference between window and spectrogram
         for i in range(len(rightImg[0])-winSize):
             #difference is found as vector norm of all differences.
-            diff = 0.5*np.power(np.linalg.norm(np.reshape(leftImg[:,i:i+winSize] - window, [len(window[0])*len(window[1])]), ord=2), 2.0)
+            flatWindow = np.reshape(leftImg[:,i:i+winSize] - window, (np.shape(window)[0]*np.shape(window)[1]))            
+            diff = 0.5*np.power(np.linalg.norm(flatWindow, ord=2), 2.0)
             if diff < minVal:
                 minVal = diff
                 minPos = i
         
+     
         #if direction is from left, tDiff is positive
-        tDiff = (len(rightImg[0])/2 - minPos)*sgWinSize
+        tDiff = (np.shape(rightImg)[1]/2 -winSize/2 - minPos)*sgWinStep
         return tDiff
         
         
@@ -246,8 +267,8 @@ class soundCleaver:
 
 
     def spectrogramFromPatch(self,patch):
-        nstep = int(self.sr * 0.01)
-        nwin  = int(self.sr * 0.03)
+        nstep = int(self.sr * 0.005) #0.01
+        nwin  = int(self.sr * 0.015) #0.03
         nfft = nwin
         
         
@@ -356,21 +377,36 @@ def main():
     #get random sound patch, 2 seconds long    
     patch = sc.patchDataBase[0]
 
-    rightPatch,leftPatch = sc.phaseShiftMono(patch,np.pi/3.5)
+    theta = np.pi/(2.5*2)
+
+    rightPatch,leftPatch = sc.phaseShiftMono(patch, theta)#np.pi/2.5)
+
+    print rightPatch
+    print leftPatch
 
     #get spectrogram from patch
     rightSpec = sc.spectrogramFromPatch(rightPatch)
     leftSpec = sc.spectrogramFromPatch(leftPatch)
-    #show spectrogram
 
-    figure(0)
+    #show spectrogram
+    plt.figure(0)
     plt.subplot(2,1,0)
     plt.imshow(leftSpec)
     plt.subplot(2,1,1)
     plt.imshow(rightSpec)
     
+    #get time difference from spectrogram.
+    print    
+    print "timeDiff"    
+    tDiff =  sc.timeDiffFromStereo(rightSpec,leftSpec)    
+    print tDiff
 
-
+    thetaHat = sc.directionFromTimeDiff(tDiff)
+    print
+    print "real direction"
+    print theta
+    print "measured direction"
+    print thetaHat
 
 ##############################################################
 ###############################################################    
