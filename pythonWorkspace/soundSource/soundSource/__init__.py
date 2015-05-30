@@ -188,7 +188,7 @@ class soundCleaver:
     #Brute force. substract snippet from longer sample to find minimum difference, this gives time difference.
     def directionFromTimeDiff(self,tDiff):
         speedOfSound = 344.0
-        a = 0.20 #Without lizard ears, could be much bigger.
+        a = 0.2 #Without lizard ears, could be much bigger.
         b = 10.000 
         
         
@@ -410,8 +410,12 @@ def main():
 ###############################################################    
     #get random sound patch, 2 seconds long    
     patch = sc.patchDataBase[0]
-
-    theta = np.pi/(2.0)*0.3
+    print "patch"
+    print patch
+    print np.min(patch)
+    print np.max(patch)
+    
+    theta = np.pi/(2.0)*0.5
 
     rightPatch,leftPatch = sc.phaseShiftMono(patch, theta)#np.pi/2.5)
 
