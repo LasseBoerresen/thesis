@@ -45,7 +45,7 @@ class network:
         
     def train(self,epocs,x,y):
         res = np.ndarray((epocs,4))
-        
+        gradCheck = []
         for i in range(epocs):
             resTemp = np.ndarray((4))            
             self.feedForward(np.array([0.0,0.0]))
@@ -60,10 +60,45 @@ class network:
             
             #print self.connections[-1].W
 #            print self.connections[-1].W_b
-            self.backprop(x,y)
+            gradCheck.append(self.backprop(x,y))
+            
+            
 
-        return res
+        return (res,gradCheck)
+    
+    def flattenWeights(self):
+        theta = np.array([])
+
+        for i in range(len(self.connections)):
+            W_shape = np.shape(self.connections[i].W)
+            W_b_shape = np.shape(self.connections[i].W_b)
+            theta = np.concatenate((theta, self.connections[i].W.reshape((W_shape[0]*W_shape[1])), self.connections[i].W_b.reshape((W_b_shape[0]*W_b_shape[1])) ))
         
+        return theta
+    
+    def flattenGradients(self):   
+        nabla = np.array([])
+
+        for i in range(len(self.connections)):
+            delta_W_shape = np.shape(self.connections[i].delta_W)
+            delta_W_b_shape = np.shape(self.connections[i].delta_W_b)
+            nabla = np.concatenate((nabla, self.connections[i].delta_W.reshape((delta_W_shape[0]*delta_W_shape[1])), self.connections[i].delta_W_b.reshape((delta_W_b_shape[0]*delta_W_b_shape[1])) ))
+        
+        return nabla
+    
+    #OBS CHECK THIS
+    def deFlattanWeights(self,theta):
+        count = 0
+        for i in range(len(self.connections)):
+            W_shape = np.shape(self.connections[i].W)
+            W_b_shape = np.shape(self.connections[i].W_b)
+            
+            self.connections[i].W = np.reshape(theta[count:count+W_shape[0]*W_shape[1]], (W_shape[0],W_shape[1]))
+            count += W_shape[0]*W_shape[1]
+            self.connections[i].W_b = np.reshape(theta[count:count+W_b_shape[0]*W_b_shape[1]], (W_b_shape[0],W_b_shape[1]))
+            count += W_b_shape[0]*W_b_shape[1]
+            
+    
     def backprop(self,x,y):
         
         #Reset accumulation matrices for weight vectors.  
@@ -71,31 +106,74 @@ class network:
             self.connections[i].delta_W = np.zeros(np.shape(self.connections[i].delta_W))
             self.connections[i].delta_W_b = np.zeros(np.shape(self.connections[i].delta_W_b))
 
+#        cost = 0.0
+
         #For each training example:
         for i in range(len(x)):
             self.feedForward(x[i]) #could complete entirely before feeding back, to be able to calcultate KL divergence.
             self.feedBack(y[i])        
+
+#            cost += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[i], ord=2),2.0)
         
-        np.        
+#        self.connections[0].delta_W
+#        self.connections[0].delta_W_b
+
+        
+        ######################################################
+        #gradient checking
+
+        epsilon = 1e-4        
+#        nabla = self.flattenGradients()
+        theta = self.flattenWeights()
+        
+        e = np.zeros(np.shape(theta))
+        g = np.zeros(np.shape(theta))
+        
+        for i in range(len(theta)):
+            e = np.zeros(np.shape(theta))
+            e[i]= epsilon            
+            thetaP = (theta + e)
+            thetaN = (theta - e)
+
+            costP = 0.0
+            costN = 0.0
+
+            for i in range(len(x)):
+                self.deFlattanWeights(thetaP)                
+                self.feedForward(x[i])
+                self.feedBack(y[i])
+                costP += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[i], ord=2),2.0)
+                
+                self.deFlattanWeights(thetaN)                
+                self.feedForward(x[i])
+                self.feedBack(y[i])                
+                costN += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[i], ord=2),2.0)
+
+            
+            g[i] = (costP - costN)/(2.0*epsilon)             
+            nabla = self.flattenGradients()
         
         #Update weight matrices.
         for i in range(len(self.connections)):
             self.connections[i].W = self.connections[i].W - lr_alpha*(self.connections[i].delta_W/double(len(x)) + wd_lambda*self.connections[i].W)
             self.connections[i].W_b = self.connections[i].W_b - lr_alpha*self.connections[i].delta_W_b/double(len(x))
            
+        return (g,nabla)
         
     #feed ONE sample forward through
     def feedForward(self, x):
 #        x = concImgSamps[j]
 #        y = x
 #       
+                
         #Feed values forward for each layer sequentially
         self.layers[0].a = x 
         for i in range(len(self.layers)-1):
             self.layers[i+1].z = self.layers[i].a.dot(self.connections[i].W) + self.layers[i].b.dot(self.connections[i].W_b)            
             self.layers[i+1].a = 1.0/(1.0+np.exp(-self.layers[i+1].z))
+            
 
-
+        
 #
 #        #Feed forward
 #        z_h = x.dot(W_ih) + b.dot(W_bh)
@@ -128,7 +206,7 @@ class network:
             self.connections[i].delta_W = self.connections[i].delta_W + grad_W
             self.connections[i].delta_W_b = self.connections[i].delta_W_b + grad_W_b 
 
-                    
+
         
 #        #Calculate error term for each layer, backpropagated through the weights        
 #        #'*' is element wise multiplocation
@@ -218,7 +296,7 @@ class dataExtractor:
 
 def main():
     
-    n_epocs = 1000
+    n_epocs = 5
     w_samples = 3
     n_samples = 100
     n_hidden = 4
@@ -228,7 +306,7 @@ def main():
 #
 #    dat = dataExtractor(grayImg,n_samples,w_samples)
 
-    nn = network((2,2,1))
+    nn = network((2,3,1))
     
     print "nn.connections[0].W_b"    
     print nn.layers[0].z 
@@ -242,7 +320,7 @@ def main():
 
     nn.feedForward(np.array([0.0,1.0]))
     print nn.layers[0].a
-    res = nn.train(n_epocs,x,y)
+    (res,gradCheck) = nn.train(n_epocs,x,y)
     
     print res
 
