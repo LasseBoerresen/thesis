@@ -44,15 +44,16 @@ def main():
 
 
     x = np.array([[0.0,0.0],[0.0,1.0],[1.0,0.0],[1.0,1.0]])
-    y = np.array([[0.0],[1.0],[1.0],[0.0]])
+    y = np.array([[0.0],[0.0],[0.0],[1.0]])
 
-    nn = network((2,2,1), x, y)
+    nn = network((2,5,1), x, y)
 
-#    res = nn.trainBFGS()
+    res = nn.trainBFGS()
+    bestW = res.x
 #    print res
     
-    bestW = [ 33.72228738,  -4.82100946, -21.26940258,   4.62732186,
-        14.67180313,   1.28878621, -47.76192686, -48.02730423,  54.34026228]
+#    bestW = [ 33.72228738,  -4.82100946, -21.26940258,   4.62732186,
+#        14.67180313,   1.28878621, -47.76192686, -48.02730423,  54.34026228]
     
     nn.deFlattenWeights(bestW)    
     (res,gradCheck) = nn.train(n_epocs,x,y)
@@ -94,8 +95,10 @@ class network:
         for i in range(len(self.x)):
             self.feedForward(self.x[i])
             cost += 0.5*np.power(np.linalg.norm(self.layers[-1].a-self.y[i], ord=2),2.0)
+
+        weightSum =  np.sum(np.power(theta,2.0))
         
-        return cost
+        return cost/double(len(self.x)) + wd_lambda/2.0*weightSum
 
     def costJac(self,theta):
         self.deFlattenWeights(theta)
@@ -336,7 +339,7 @@ class connection:
         self.delta_W = np.zeros((nIn,nOut))
         self.delta_W_b = np.zeros((1,nOut))
         
-        init_epsilon = 1.01#0.01 #going from 0.01 to 1.01 made it possible to train an xor function. Before, with all values at approx 0.00001, all outputs just went towards 0.5, i.e. avrg output.
+        init_epsilon = 0.9#0.01 #going from 0.01 to 1.01 made it possible to train an xor function. Before, with all values at approx 0.00001, all outputs just went towards 0.5, i.e. avrg output.
         #Initialize weigth matrices to random values to break symmetry
         self.W = np.random.normal(loc=0.0, scale=init_epsilon**2.0, size=np.shape(self.W))
         self.W_b = np.random.normal(loc=0.0, scale=init_epsilon**2.0, size=np.shape(self.W_b))
