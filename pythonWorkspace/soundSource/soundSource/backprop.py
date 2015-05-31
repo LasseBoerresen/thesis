@@ -22,15 +22,17 @@ from skimage import data, color
 
 from scipy.optimize import minimize, rosen, rosen_der
 
-lr_alpha = 13.32423443
-wd_lambda = 0.0
+lr_alpha = 0.932423443
+wd_lambda = 0.0001
+
 sp_rho = 0.05
 sp_beta = 0.01
 
 
+
 def main():
     
-    n_epocs = 100
+    n_epocs = 5
     w_samples = 3
     n_samples = 100
     n_hidden = 4
@@ -40,12 +42,19 @@ def main():
 #
 #    dat = dataExtractor(grayImg,n_samples,w_samples)
 
-    nn = network((2,2,2,1))
 
     x = np.array([[0.0,0.0],[0.0,1.0],[1.0,0.0],[1.0,1.0]])
     y = np.array([[0.0],[1.0],[1.0],[0.0]])
 
+    nn = network((2,2,1), x, y)
+
+#    res = nn.trainBFGS()
+#    print res
     
+    bestW = [ 33.72228738,  -4.82100946, -21.26940258,   4.62732186,
+        14.67180313,   1.28878621, -47.76192686, -48.02730423,  54.34026228]
+    
+    nn.deFlattenWeights(bestW)    
     (res,gradCheck) = nn.train(n_epocs,x,y)
     
     print "gradCheck"
@@ -57,10 +66,13 @@ def main():
 
 
 class network:
-    def __init__(self, chain):
+    def __init__(self, chain,x,y):
         self.chain = chain
         self.layers = []
         self.connections = []
+        
+        self.x = x
+        self.y = y
 
         #Initiate layer objects in order        
         for i in range(len(self.chain)):        
@@ -70,7 +82,37 @@ class network:
         for i in range(len(self.layers)-1):
             self.connections.append(connection(self.layers[i].m,self.layers[i+1].m))
             
+    def trainBFGS(self):
+        theta0 = self.flattenWeights()
+   
+        return minimize(self.cost, theta0, method='BFGS', jac=self.costJac, options={'disp': True}) #'gtol': 1e-6,
+
+    def cost(self,theta):
+        self.deFlattenWeights(theta)
         
+        cost = 0.0
+        for i in range(len(self.x)):
+            self.feedForward(self.x[i])
+            cost += 0.5*np.power(np.linalg.norm(self.layers[-1].a-self.y[i], ord=2),2.0)
+        
+        return cost
+
+    def costJac(self,theta):
+        self.deFlattenWeights(theta)
+        #set accumulation matrices for weight vectors.  
+        for i in range(len(self.connections)):
+            self.connections[i].delta_W = np.zeros(np.shape(self.connections[i].delta_W))
+            self.connections[i].delta_W_b = np.zeros(np.shape(self.connections[i].delta_W_b))
+
+        #For each training example:
+        for i in range(len(self.x)):
+            self.feedForward(self.x[i]) #could complete entirely before feeding back, to be able to calcultate KL divergence.
+            self.feedBack(self.y[i])       
+        nabla = self.flattenGradients()/double(len(self.x))
+ 
+        return nabla
+
+
     def train(self,epocs,x,y):
         res = np.ndarray((epocs,4))
         gradCheck = np.ndarray((epocs,len(self.flattenGradients())))
@@ -89,9 +131,13 @@ class network:
             
             #print self.connections[-1].W
 #            print self.connections[-1].W_b
-            gradCheck[i] = self.backprop(x,y)
+            (cost,gradCheck[i]) = self.backprop(x,y)
             
-            
+            #Update weight matrices.
+            for i in range(len(self.connections)):
+                self.connections[i].W = self.connections[i].W - lr_alpha*(self.connections[i].delta_W/double(len(x)) + wd_lambda*self.connections[i].W)
+                self.connections[i].W_b = self.connections[i].W_b - lr_alpha*self.connections[i].delta_W_b/double(len(x))
+              
 
         return (res,gradCheck)
     
@@ -103,14 +149,14 @@ class network:
             self.connections[i].delta_W = np.zeros(np.shape(self.connections[i].delta_W))
             self.connections[i].delta_W_b = np.zeros(np.shape(self.connections[i].delta_W_b))
 
-#        cost = 0.0
+        cost = 0.0
 
         #For each training example:
         for i in range(len(x)):
             self.feedForward(x[i]) #could complete entirely before feeding back, to be able to calcultate KL divergence.
-            self.feedBack(y[i])        
+            self.feedBack(y[i])       
 
-#            cost += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[i], ord=2),2.0)
+            cost += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[i], ord=2),2.0)
         
 #        self.connections[0].delta_W
 #        self.connections[0].delta_W_b
@@ -158,12 +204,12 @@ class network:
             
         #####################################################
             
-        #Update weight matrices.
-        for i in range(len(self.connections)):
-            self.connections[i].W = self.connections[i].W - lr_alpha*(self.connections[i].delta_W/double(len(x)) + wd_lambda*self.connections[i].W)
-            self.connections[i].W_b = self.connections[i].W_b - lr_alpha*self.connections[i].delta_W_b/double(len(x))
-           
-        return np.abs(nabla-grad)
+#        #Update weight matrices.
+#        for i in range(len(self.connections)):
+#            self.connections[i].W = self.connections[i].W - lr_alpha*(self.connections[i].delta_W/double(len(x)) + wd_lambda*self.connections[i].W)
+#            self.connections[i].W_b = self.connections[i].W_b - lr_alpha*self.connections[i].delta_W_b/double(len(x))
+#           
+        return (cost,np.abs(nabla-grad))
         
     #feed ONE sample forward through
     def feedForward(self, x):
@@ -177,7 +223,7 @@ class network:
             self.layers[i+1].z = self.layers[i].a.dot(self.connections[i].W) + self.layers[i].b.dot(self.connections[i].W_b)            
             self.layers[i+1].a = 1.0/(1.0+np.exp(-self.layers[i+1].z))
             
-
+        
         
 #
 #        #Feed forward
@@ -203,11 +249,13 @@ class network:
         for i in reversed(seq):
             self.layers[i].err = (self.connections[i].W.dot(self.layers[i+1].err))*self.layers[i].a*(1.0-self.layers[i].a)                      
         
-        #TODO: Do numerical check of gradients.
+        #Calculate weights updates for each connection, based on this trainins example
         for i in range(len(self.connections)):
+            #Calculate gradients from activations and the errors of the following layer.
             grad_W = np.outer(self.layers[i].a,self.layers[i+1].err) #np.outer is used to force treating the vectors as matrices 9x1 * 1x9 = 9x9
             grad_W_b = self.layers[i+1].err
             
+            #Calc
             self.connections[i].delta_W = self.connections[i].delta_W + grad_W
             self.connections[i].delta_W_b = self.connections[i].delta_W_b + grad_W_b 
 
