@@ -28,6 +28,34 @@ sp_rho = 0.05
 sp_beta = 0.01
 
 
+def main():
+    
+    n_epocs = 100
+    w_samples = 3
+    n_samples = 100
+    n_hidden = 4
+
+#    image = data.lena()
+#    grayImg = color.rgb2gray(image)
+#
+#    dat = dataExtractor(grayImg,n_samples,w_samples)
+
+    nn = network((2,2,2,1))
+
+    x = np.array([[0.0,0.0],[0.0,1.0],[1.0,0.0],[1.0,1.0]])
+    y = np.array([[0.0],[1.0],[1.0],[0.0]])
+
+    
+    (res,gradCheck) = nn.train(n_epocs,x,y)
+    
+    print "gradCheck"
+    print gradCheck[:,-4:-1]    
+    
+    print "res"
+    print res
+
+
+
 class network:
     def __init__(self, chain):
         self.chain = chain
@@ -45,7 +73,8 @@ class network:
         
     def train(self,epocs,x,y):
         res = np.ndarray((epocs,4))
-        gradCheck = []
+        gradCheck = np.ndarray((epocs,len(self.flattenGradients())))
+        
         for i in range(epocs):
             resTemp = np.ndarray((4))            
             self.feedForward(np.array([0.0,0.0]))
@@ -60,44 +89,12 @@ class network:
             
             #print self.connections[-1].W
 #            print self.connections[-1].W_b
-            gradCheck.append(self.backprop(x,y))
+            gradCheck[i] = self.backprop(x,y)
             
             
 
         return (res,gradCheck)
     
-    def flattenWeights(self):
-        theta = np.array([])
-
-        for i in range(len(self.connections)):
-            W_shape = np.shape(self.connections[i].W)
-            W_b_shape = np.shape(self.connections[i].W_b)
-            theta = np.concatenate((theta, self.connections[i].W.reshape((W_shape[0]*W_shape[1])), self.connections[i].W_b.reshape((W_b_shape[0]*W_b_shape[1])) ))
-        
-        return theta
-    
-    def flattenGradients(self):   
-        nabla = np.array([])
-
-        for i in range(len(self.connections)):
-            delta_W_shape = np.shape(self.connections[i].delta_W)
-            delta_W_b_shape = np.shape(self.connections[i].delta_W_b)
-            nabla = np.concatenate((nabla, self.connections[i].delta_W.reshape((delta_W_shape[0]*delta_W_shape[1])), self.connections[i].delta_W_b.reshape((delta_W_b_shape[0]*delta_W_b_shape[1])) ))
-        
-        return nabla
-    
-    #OBS CHECK THIS
-    def deFlattanWeights(self,theta):
-        count = 0
-        for i in range(len(self.connections)):
-            W_shape = np.shape(self.connections[i].W)
-            W_b_shape = np.shape(self.connections[i].W_b)
-            
-            self.connections[i].W = np.reshape(theta[count:count+W_shape[0]*W_shape[1]], (W_shape[0],W_shape[1]))
-            count += W_shape[0]*W_shape[1]
-            self.connections[i].W_b = np.reshape(theta[count:count+W_b_shape[0]*W_b_shape[1]], (W_b_shape[0],W_b_shape[1]))
-            count += W_b_shape[0]*W_b_shape[1]
-            
     
     def backprop(self,x,y):
         
@@ -122,43 +119,51 @@ class network:
         ######################################################
         #gradient checking
 
-        epsilon = 1e-4        
+        epsilon = 1e-4
 #        nabla = self.flattenGradients()
         theta = self.flattenWeights()
         
         e = np.zeros(np.shape(theta))
-        g = np.zeros(np.shape(theta))
+        grad = np.zeros(np.shape(theta))
         
+        #save gradients of actual weights.        
+        nabla = self.flattenGradients()
+
+        #For each weight individually, approximate gradient.
         for i in range(len(theta)):
+            #Create modified theta vectors using e = [0,0,0,0,i=1,0,0].                
             e = np.zeros(np.shape(theta))
-            e[i]= epsilon            
+            e[i] = epsilon            
             thetaP = (theta + e)
             thetaN = (theta - e)
 
             costP = 0.0
             costN = 0.0
-
-            for i in range(len(x)):
-                self.deFlattanWeights(thetaP)                
-                self.feedForward(x[i])
-                self.feedBack(y[i])
-                costP += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[i], ord=2),2.0)
-                
-                self.deFlattanWeights(thetaN)                
-                self.feedForward(x[i])
-                self.feedBack(y[i])                
-                costN += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[i], ord=2),2.0)
-
             
-            g[i] = (costP - costN)/(2.0*epsilon)             
-            nabla = self.flattenGradients()
-        
+            #calculate sum of cost for entire dataset.
+            self.deFlattenWeights(thetaP)             
+            for j in range(len(x)):
+                self.feedForward(x[j])
+                #self.feedBack(y[j])
+                costP += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[j], ord=2),2.0)
+                
+            self.deFlattenWeights(thetaN)                
+            for j in range(len(x)):
+                self.feedForward(x[j])
+                #self.feedBack(y[i])                
+                costN += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[j], ord=2),2.0)
+
+            #calculate approximate gradient from consts
+            grad[i] = ( costP/double(len(x)) - costN/double(len(x)) )/(2.0*epsilon)             
+            
+        #####################################################
+            
         #Update weight matrices.
         for i in range(len(self.connections)):
             self.connections[i].W = self.connections[i].W - lr_alpha*(self.connections[i].delta_W/double(len(x)) + wd_lambda*self.connections[i].W)
             self.connections[i].W_b = self.connections[i].W_b - lr_alpha*self.connections[i].delta_W_b/double(len(x))
            
-        return (g,nabla)
+        return np.abs(nabla-grad)
         
     #feed ONE sample forward through
     def feedForward(self, x):
@@ -230,7 +235,39 @@ class network:
 #        delta_W_ih = delta_W_ih + grad_W_ih
 #        delta_W_bh = delta_W_bh + grad_W_bh
 
+    def flattenWeights(self):
+        theta = np.array([])
+
+        for i in range(len(self.connections)):
+            W_shape = np.shape(self.connections[i].W)
+            W_b_shape = np.shape(self.connections[i].W_b)
+            theta = np.concatenate((theta, self.connections[i].W.reshape((W_shape[0]*W_shape[1])), self.connections[i].W_b.reshape((W_b_shape[0]*W_b_shape[1])) ))
         
+        return theta
+    
+    def flattenGradients(self):   
+        nabla = np.array([])
+
+        for i in range(len(self.connections)):
+            delta_W_shape = np.shape(self.connections[i].delta_W)
+            delta_W_b_shape = np.shape(self.connections[i].delta_W_b)
+            nabla = np.concatenate((nabla, self.connections[i].delta_W.reshape((delta_W_shape[0]*delta_W_shape[1])), self.connections[i].delta_W_b.reshape((delta_W_b_shape[0]*delta_W_b_shape[1])) ))
+        
+        return nabla
+    
+    #OBS CHECK THIS
+    def deFlattenWeights(self,theta):
+        count = 0
+        for i in range(len(self.connections)):
+            W_shape = np.shape(self.connections[i].W)
+            W_b_shape = np.shape(self.connections[i].W_b)
+            
+            self.connections[i].W = np.reshape(theta[count:count+W_shape[0]*W_shape[1]], (W_shape[0],W_shape[1]))
+            count += W_shape[0]*W_shape[1]
+            self.connections[i].W_b = np.reshape(theta[count:count+W_b_shape[0]*W_b_shape[1]], (W_b_shape[0],W_b_shape[1]))
+            count += W_b_shape[0]*W_b_shape[1]
+            
+       
 
 class layer:
     def __init__(self,m):
@@ -294,35 +331,6 @@ class dataExtractor:
 
 
 
-def main():
-    
-    n_epocs = 5
-    w_samples = 3
-    n_samples = 100
-    n_hidden = 4
-
-#    image = data.lena()
-#    grayImg = color.rgb2gray(image)
-#
-#    dat = dataExtractor(grayImg,n_samples,w_samples)
-
-    nn = network((2,3,1))
-    
-    print "nn.connections[0].W_b"    
-    print nn.layers[0].z 
-    print nn.layers[0].a 
-    
-    print
-    print
-    
-    x = np.array([[0.0,0.0],[0.0,1.0],[1.0,0.0],[1.0,1.0]])
-    y = np.array([[0.0],[1.0],[1.0],[0.0]])
-
-    nn.feedForward(np.array([0.0,1.0]))
-    print nn.layers[0].a
-    (res,gradCheck) = nn.train(n_epocs,x,y)
-    
-    print res
 
 
 
