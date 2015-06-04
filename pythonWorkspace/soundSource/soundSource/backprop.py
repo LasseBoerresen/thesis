@@ -48,32 +48,6 @@ from sklearn.preprocessing import normalize
 from sklearn.datasets import fetch_mldata
 mnist = fetch_mldata('MNIST original')#, data_home=custom_data_home)
 
-mnistBinData = []
-mnistBinTarget = []
-for i in range(len(mnist.target)):
-    if mnist.target[i] < 2:
-        mnistBinData.append(mnist.data[i])        
-        mnistBinTarget.append(mnist.target[i])
-mnistBinData = np.array(mnistBinData)
-mnistBinTarget = np.array(mnistBinTarget)
-
-mnistBinTarget1Hot = np.zeros((mnistBinTarget.shape[0],2))
-for i in range(len(mnistBinTarget)):
-    for j in np.unique(mnistBinTarget):
-        if mnistBinTarget[i] == j:
-            mnistBinTarget1Hot[i,j] = 1.0 
-
-
-K = 10 #Classes
-
-unique = np.unique(mnist.target)
-
-mnistTarget1Hot = np.zeros((len(mnist.target),K))
-for i in range(len(mnist.target)):
-    for j in unique:
-        if mnist.target[i] == j:
-            mnistTarget1Hot[i,j] = 1.0
-
 
 
 #print "np.unique(mnist.target)"
@@ -88,17 +62,159 @@ for i in range(len(mnist.target)):
 lr_alpha = 0.932423443
 wd_lambda = 0.00001
 
+#ref http://se.mathworks.com/help/nnet/examples/training-a-deep-neural-network-for-digit-classification.html
 sp_rho = 0.05
-sp_beta = 0.01
+sp_beta = 4.0#0.91
 
 
+n_epocs = 0
+w_samples = 8
+n_samples = 500
+n_hidden = 10
+n_maxiter = 100
 
 def main():
     
+        
+    x = mnist.data.astype(double) 
+    xMin = np.min(x.flatten())
+    xMax = np.max(x.flatten())
+    xNorm = (x-xMin)/(xMax-xMin)
+
+    #ERROR: ONLY RETURNS n_conponents features, equal to n samples, instead of all features.
+    #Run PCA on data, to decorrelate features.
+#    pca = decomposition.PCA(whiten=True)
+#    pca.fit(xNorm)
+#    xNormPca = pca.transform(xNorm)
+    
+    xNormPca = xNorm #CHEAT   
+    
+
+    x = xNormPca
+   
+#    x = np.reshape(x,(len(x),28,28))
+#    x = x[:,10:15,10:15:]
+#    x = np.reshape(x,(len(x),5*5))
+ 
+    x = xNormPca
+    y = x    
+
+    #Shuffle Dataset
+#    oldx = x
+#    oldy = y
+#    order = np.arange(len(x))
+#    np.random.shuffle(order)
+#    for i in range(len(x)):
+#        x[i] = oldx[order[i]]
+#        y[i] = oldy[order[i]] 
+
+    x_train = x[0:n_samples]
+    y_train = y[0:n_samples]    
+    x_test = x[n_samples:n_samples*2]
+    y_test = y[n_samples:n_samples*2]    
+    
+    x = x_train
+    y = y_train
+
+    print
+    print "Data Ready"
+    print
+
+    
+    nn = network((len(x[0]),n_hidden,len(y[0])), x, y)
+
+    #Load previous weights    
+    nn.deFlattenWeights(sp.load("bestW.npy"))
+    print
+    print "Network Created"
+    print
+
+
+    res = nn.trainBFGS()
+    bestW = res.x
+    sp.save("bestW.npy",bestW)
+
+    print
+    print "Network Trained"
+    print
+    print res
+
+    
+
+
+#    print "TRAINING SET"
+#    nn.confMat(x,y)
+#    
+#    print "TEST SET"
+#    nn.confMat(x_test,y_test)
+
+    
+    maxed = np.ndarray((len(nn.layers[1].a),len(nn.layers[0].a)))
+    #for number of hidden units.
+    for i in range(len(nn.layers[1].a)):
+        #for each input/pixel        
+        normW = np.linalg.norm(nn.connections[0].W[:,i],2)
+        for j in range(len(nn.layers[0].a)):
+            maxed[i,j] = nn.connections[0].W[j,i]/normW
+
+#    plt.figure(1)
+    for i in range(10):
+        plt.subplot(5,2,i)
+        plt.imshow(np.reshape(maxed[i],(28,28)), cmap=cm.Greys_r, interpolation='nearest')#, vmin=0., vmax=1.)
+
+
+
+
+
+
+def mainMnist():
+
+#    mnistBinData = []
+#    mnistBinTarget = []
+#    for i in range(len(mnist.target)):
+#        if mnist.target[i] < 2:
+#            mnistBinData.append(mnist.data[i])        
+#            mnistBinTarget.append(mnist.target[i])
+#    mnistBinData = np.array(mnistBinData)
+#    mnistBinTarget = np.array(mnistBinTarget)
+#    
+#    mnistBinTarget1Hot = np.zeros((mnistBinTarget.shape[0],2))
+#    for i in range(len(mnistBinTarget)):
+#        for j in np.unique(mnistBinTarget):
+#            if mnistBinTarget[i] == j:
+#                mnistBinTarget1Hot[i,j] = 1.0 
+    
+    
+    K = 10 #Classes
+    
+    unique = np.unique(mnist.target)
+    
+    mnistTarget1Hot = np.zeros((len(mnist.target),K))
+    for i in range(len(mnist.target)):
+        for j in unique:
+            if mnist.target[i] == j:
+                mnistTarget1Hot[i,j] = 1.0
+
+
+
+
+
     n_epocs = 0
     w_samples = 3
     n_samples = 5000
     n_hidden = 4
+    
+        #ERROR: ONLY RETURNS n_conponents features, equal to n samples, instead of all features.
+    #Run PCA on data, to decorrelate features.
+#    pca = decomposition.PCA(whiten=True)
+#    pca.fit(xNorm)
+#    xNormPca = pca.transform(xNorm)
+    
+    xNormPca = xNorm #CHEAT   
+    
+    x = xNormPca
+    y = mnistTarget1Hot    
+
 
 #    image = data.lena()
 #    grayImg = color.rgb2gray(image)
@@ -144,8 +260,13 @@ def main():
         y[i] = oldy[order[i]]    
        
     #Extract n_samples.        
-    x = x[0:n_samples]
-    y = y[0:n_samples]    
+    x_train = x[0:n_samples]
+    y_train = y[0:n_samples]    
+    x_test = x[n_samples:n_samples*2]
+    y_test = y[n_samples:n_samples*2]    
+    
+    x = x_train
+    y = y_train
     
     print "x.shape:"
     print x.shape
@@ -173,43 +294,31 @@ def main():
 #    print nn.layers[-1].a
 
 #
-#    res = nn.trainBFGS()
-#    bestW = res.x
-#    sp.save("bestW.npy",bestW)
+    res = nn.trainBFGS()
+    bestW = res.x
+    sp.save("bestW.npy",bestW)
 #
 #    print
 #    print "Network Trained"
 #    print
 #    print res
 
-#    
-#    nn.deFlattenWeights(bestW)    
-#    (res,gradCheck) = nn.train(n_epocs,x,y)
     
+    nn.deFlattenWeights(bestW)    
+#    (res,gradCheck) = nn.train(n_epocs,x,y)
+#    
 #    print "gradCheck"
 #    print gradCheck[:,-4:-1]    
 #    
 #    print "res"
 #    print res
 #    
-    confMat = np.zeros((len(y[0]),len(y[0])),dtype = int)
-
-    nCorrect= 0
-    for i in range(len(x)):
-        nn.feedForward(x[i])
-        confMat[y[i].argmax(),nn.layers[-1].a.argmax()] += 1
-        
-    print
-    print "confMat"
-    print confMat
-    print
+    print "TRAINING SET"
+    nn.confMat(x,y)
     
-    for i in range(len(confMat)):
-        nCorrect += confMat[i,i]
-    print "%correct"
-    print nCorrect/double(len(x))
-
-
+    print "TEST SET"
+    nn.confMat(x_test,y_test)
+    
     
 
 
@@ -231,21 +340,21 @@ def main():
 #
 #    sp.save("featImgs.npy",featImgs)
 
-
-    maxed = np.ndarray((len(nn.layers[1].a),len(nn.layers[0].a)))
-    #for number of hidden units.
-    for i in range(len(nn.layers[1].a)):
-        #for each input/pixel        
-        normW = np.linalg.norm(nn.connections[0].W[:,i])
-        for j in range(len(nn.layers[0].a)):
-            maxed[i,j] = nn.connections[0].W[j,i]/normW
-
-    print np.linalg.norm(maxed[0])
-    print maxed[0]
-    plt.figure(1)
-    for i in range(100):
-        plt.subplot(10,10,i)
-        plt.imshow(np.reshape(maxed[i],(28,28)), cmap=cm.Greys_r, interpolation='nearest')#, vmin=0., vmax=1.)
+#
+#    maxed = np.ndarray((len(nn.layers[1].a),len(nn.layers[0].a)))
+#    #for number of hidden units.
+#    for i in range(len(nn.layers[1].a)):
+#        #for each input/pixel        
+#        normW = np.linalg.norm(nn.connections[0].W[:,i])
+#        for j in range(len(nn.layers[0].a)):
+#            maxed[i,j] = nn.connections[0].W[j,i]/normW
+#
+#    print np.linalg.norm(maxed[0])
+#    print maxed[0]
+#    plt.figure(1)
+#    for i in range(100):
+#        plt.subplot(10,10,i)
+#        plt.imshow(np.reshape(maxed[i],(28,28)), cmap=cm.Greys_r, interpolation='nearest')#, vmin=0., vmax=1.)
 
 
 #    #For each class
@@ -278,6 +387,8 @@ class network:
         
         self.feat = 0
 
+        
+        
         #Initiate layer objects in order        
         for i in range(len(self.chain)):        
             self.layers.append(layer(self.chain[i]))
@@ -285,6 +396,31 @@ class network:
         #Initiate connection objects in order
         for i in range(len(self.layers)-1):
             self.connections.append(connection(self.layers[i].m,self.layers[i+1].m))
+
+
+        self.a_mat = []
+        for i in range(len(self.layers)):
+            self.a_mat.append(np.ndarray((len(x),len(self.layers[i].a))))
+       
+
+    def conMat(self,x,y):    
+        confMat = np.zeros((len(y[0]),len(y[0])),dtype = int)
+    
+        nCorrect= 0
+        for i in range(len(x)):
+            self.feedForward(x[i])
+            confMat[y[i].argmax(),self.layers[-1].a.argmax()] += 1
+            
+        print
+        print "confMat Training"
+        print confMat
+        
+        
+        for i in range(len(confMat)):
+            nCorrect += confMat[i,i]
+        print "%correct"
+        print nCorrect/double(len(x))
+
 
     def featCost(self,theta):
         self.feedForward(theta)
@@ -297,9 +433,170 @@ class network:
     def trainBFGS(self):
         theta0 = self.flattenWeights()
    
-        return minimize(self.cost, theta0, method='CG', jac=self.costJac, options={'maxiter' : 10,'gtol': 1e-8,'disp': True}) #
+        return minimize(self.costAE, theta0, method='CG', jac=self.costJacAE, options={'maxiter' : n_maxiter})#,'gtol': 1e-8,'disp': True}) #
 
+ 
+    def costAE(self,theta):
+        self.deFlattenWeights(theta)
+        
+        cost = 0.0
+        for i in range(len(self.x)):
+            self.feedForward(self.x[i])
+            cost += 0.5*np.power(np.linalg.norm(self.layers[-1].a-self.y[i], ord=2),2.0)
+            for j in range(len(self.layers)):            
+                self.a_mat[j][i] = self.layers[j].a
+        
+        wd = 0.0             
+        for j in range(len(self.connections)):
+            wd += np.sum(np.power(self.connections[j].W,2.0))
+
+#        rho_hat_slow = np.ndarray((len(self.layers[-2].a)))
+#        for i in range(len(self.layers[-2].a)):
+#            rho_hat_sum = 0.0
+#            for j in range(len(self.x)):
+#                rho_hat_sum += self.a_mat[-2][j,i]
+#            rho_hat_slow[i] = rho_hat_sum/double(len(self.x))
+#            
+       
+        rho_hat = np.sum(self.a_mat[-2],axis=0)/double(len(self.x))
+#
+#        for i in range(len(self.layers[-2].a)):
+#            sp_rho*np.log(sp_rho/rho_hat[i])+(1-sp_rho)*np.log((1-sp)/())
+#
+
+        klDiv = np.sum(sp_rho*np.log(sp_rho/rho_hat)+(1.0-sp_rho)*np.log((1-sp_rho)/(1-rho_hat)))
+
+        
+        finalCost = cost/double(len(self.x)) + 0.5*wd_lambda*wd + sp_beta*klDiv 
+#        print "cost:"        
+        print str(finalCost)# + " " + str(klDiv)
+        return finalCost
+        
+    def costJacAE(self,theta):
+        self.deFlattenWeights(theta)
+        #set accumulation matrices for weight vectors to 0.0.  
+        for i in range(len(self.connections)):
+            self.connections[i].delta_W = np.zeros(np.shape(self.connections[i].delta_W))
+            self.connections[i].delta_W_b = np.zeros(np.shape(self.connections[i].delta_W_b))
+
+#        self.a_h_mat = np.zeros(self.a_mat.shape)
+        #For each training example:
+        for i in range(len(self.x)):
+            self.feedForward(self.x[i]) #could complete entirely before feeding back, to be able to calcultate KL divergence.
+            for j in range(len(self.layers)):            
+                self.a_mat[j][i] = self.layers[j].a
+
+        rho_hat = np.sum(self.a_mat[-2],axis=0)/double(len(self.x))
+
+        for i in range(len(self.x)):
+            self.feedBackAE(self.y[i],i,rho_hat)
+
+
+
+        nabla = self.flattenGradients()/double(len(self.x))
+        nabla2 = self.flattenGradients()
+        for i in range(len(self.connections)):
+            self.connections[i].delta_W += wd_lambda*self.connections[i].W
+        nabla += self.flattenGradients() - nabla2
+ 
+
+
+
+#        epsilon = 1e-4
+##        nabla = self.flattenGradients()
+#        
+#        e = np.zeros(np.shape(theta))
+#        grad = np.zeros(np.shape(theta))
+#        
+#        #save gradients of actual weights.        
+#        weights_orig = self.flattenWeights()
+#        nabla_orig = self.flattenGradients()
+#
+#        #For each weight individually, approximate gradient.
+#        for i in range(len(theta)):
+#            #Create modified theta vectors using e = [0,0,0,0,i=1,0,0].                
+#            e = np.zeros(np.shape(theta))
+#            e[i] = epsilon            
+#            thetaP = (theta + e)
+#            thetaN = (theta - e)
+#
+#            costP = 0.0
+#            costN = 0.0
+#            
+#            #calculate sum of cost for entire dataset.
+#
+#            self.deFlattenWeights(thetaP)             
+#            wdP = 0.0             
+#            for j in range(len(self.connections)):
+#                wdP += np.sum(np.power(self.connections[j].W,2.0))
+#            wdP *= wd_lambda/2.0            
+#       
+#            for j in range(len(self.x)):
+#                self.feedForward(self.x[j])
+#                costP += 0.5*np.power(np.linalg.norm(self.layers[-1].a-self.y[j], ord=2),2.0)
+#                for k in range(len(self.layers)):            
+#                    self.a_mat[k][j] = self.layers[k].a
+#
+#            rho_hat = np.sum(self.a_mat[-2],axis=0)/double(len(self.x))
+#            klDiv = np.sum(sp_rho*np.log(sp_rho/rho_hat)+(1.0-sp_rho)*np.log((1-sp_rho)/(1-rho_hat)))
+#            
+#            costP = costP/double(len(self.x)) + wdP + sp_beta*klDiv
+#
+#
+#
+#            self.deFlattenWeights(thetaN)
+#            wdN = 0.0             
+#            for j in range(len(self.connections)):
+#                wdN += np.sum(np.power(self.connections[j].W,2.0))
+#            wdN *= wd_lambda/2.0
+#            
+#            for j in range(len(self.x)):
+#                self.feedForward(self.x[j])
+#                costN += 0.5*np.power(np.linalg.norm(self.layers[-1].a-self.y[j], ord=2),2.0)
+#                for k in range(len(self.layers)):            
+#                    self.a_mat[k][j] = self.layers[k].a
+#
+#        
+#            rho_hat = np.sum(self.a_mat[-2],axis=0)/double(len(self.x))
+#            klDiv = np.sum(sp_rho*np.log(rho_hat/sp_rho)+(1.0-sp_rho)*np.log((1-sp_rho)/(1-rho_hat)))
+#            
+#            costN = costN/double(len(self.x)) + wdN + sp_beta*klDiv
+#
+#
+#            #calculate approximate gradient from consts
+#            grad[i] = ( costP - costN )/(2.0*epsilon)             
+#
+#
+#        
+#        print "gradDIff: " + str( np.mean(np.abs(nabla - grad)) )
+       
+#        print "nabla:"
+#        print np.linalg.norm(nabla,ord=2)        
+        return nabla
     
+        
+    
+
+    def feedBackAE(self,y,n,rho_hat):
+        #find error for output layer        
+        self.layers[-1].err = -(y-self.a_mat[-1][n])*self.a_mat[-1][n]*(1.0-self.a_mat[-1][n])
+        
+        #go through all hidden layers, i.e. not last and first layer, hence -1 and .pop(0)
+        seq = range(len(self.layers)-1)
+        seq.pop(0)        
+        for i in reversed(seq):
+            self.layers[i].err = (self.connections[i].W.dot(self.layers[i+1].err) + sp_beta*(-(sp_rho/rho_hat)+(1.-sp_rho)/(1.-rho_hat)))*self.a_mat[i][n]*(1.0-self.a_mat[i][n])                       
+        
+        #Calculate weights updates for each connection, based on this trainins example
+        for i in range(len(self.connections)):
+            #Calculate gradients from activations and the errors of the following layer.
+            grad_W = np.outer(self.a_mat[i][n],self.layers[i+1].err) #np.outer is used to force treating the vectors as matrices 9x1 * 1x9 = 9x9
+            grad_W_b = self.layers[i+1].err
+            
+            #Calc
+            self.connections[i].delta_W = self.connections[i].delta_W + grad_W
+            self.connections[i].delta_W_b = self.connections[i].delta_W_b + grad_W_b 
+   
 
     def cost(self,theta):
         self.deFlattenWeights(theta)
@@ -309,9 +606,12 @@ class network:
             self.feedForward(self.x[i])
             cost += 0.5*np.power(np.linalg.norm(self.layers[-1].a-self.y[i], ord=2),2.0)
 
-        weightSum =  np.sum(np.power(theta,2.0))
-        
-        finalCost = cost/double(len(self.x)) + wd_lambda/2.0*weightSum
+        wd = 0.0             
+        for j in range(len(self.connections)):
+            wd += np.sum(np.power(self.connections[j].W,2.0))
+        wd *= wd_lambda/2.0            
+
+        finalCost = cost/double(len(self.x)) + wd
 #        print "cost:"        
         print finalCost
         return finalCost
@@ -326,8 +626,14 @@ class network:
         #For each training example:
         for i in range(len(self.x)):
             self.feedForward(self.x[i]) #could complete entirely before feeding back, to be able to calcultate KL divergence.
-            self.feedBack(self.y[i])       
+            self.feedBack(self.y[i])
+
         nabla = self.flattenGradients()/double(len(self.x))
+        nabla2 = self.flattenGradients()
+        for i in range(len(self.connections)):
+            self.connections[i].delta_W += wd_lambda*self.connections[i].W
+        nabla += self.flattenGradients() - nabla2
+        
 #        print "nabla:"
 #        print np.linalg.norm(nabla,ord=2)        
         return nabla
@@ -338,28 +644,47 @@ class network:
         
         cost = 0.0
         for i in range(len(self.x)):
-            self.feedForward(self.x[i])
-            cost += self.y[i]*(np.log(layers[-1].a)) + (1.0-self.y[i])*(np.log(layers[-1].a))
+            self.feedForwardLog(self.x[i])
+            for k in range(len(self.y[i])):
+#                print                
+#                print len(self.y[i])
+#                print len(self.layers[-1].a)                
+#                print k
+#                print
+                cost += self.y[i,k]*np.log(self.layers[-1].a[k])
 
-        weightSum =  np.sum(np.power(theta,2.0))
+        wd = 0.0             
+        for j in range(len(self.connections)):
+            wd += np.sum(np.power(self.connections[j].W,2.0))
+        wd *= wd_lambda/2.0            
+
+        finalCost = -cost/double(len(self.x)) + wd
+#        print "cost:"        
+        print finalCost
+        return finalCost
         
-        return (-cost/double(len(self.x))) + wd_lambda/2.0*weightSum
-
-    def costLogJac(self,theta):
+        
+    def costJacLog(self,theta):
         self.deFlattenWeights(theta)
-        #set accumulation matrices for weight vectors.  
+        #set accumulation matrices for weight vectors to 0.0.  
         for i in range(len(self.connections)):
             self.connections[i].delta_W = np.zeros(np.shape(self.connections[i].delta_W))
             self.connections[i].delta_W_b = np.zeros(np.shape(self.connections[i].delta_W_b))
 
         #For each training example:
         for i in range(len(self.x)):
-            self.feedForward(self.x[i]) #could complete entirely before feeding back, to be able to calcultate KL divergence.
-            self.feedBack(self.y[i])       
-        nabla = self.flattenGradients()/double(len(self.x))
- 
-        return nabla
+            self.feedForwardLog(self.x[i]) #could complete entirely before feeding back, to be able to calcultate KL divergence.
+            self.feedBackLog(self.y[i])
 
+        nabla = self.flattenGradients()/double(len(self.x))
+        nabla2 = self.flattenGradients()
+        for i in range(len(self.connections)):
+            self.connections[i].delta_W += wd_lambda*self.connections[i].W
+        nabla += self.flattenGradients() - nabla2
+        
+#        print "nabla:"
+#        print np.linalg.norm(nabla,ord=2)        
+        return nabla
 
 
     def train(self,epocs,x,y):
@@ -383,6 +708,7 @@ class network:
             (cost,gradCheck[i]) = self.backprop(x,y)
             print "cost:"
             print cost
+            
             #Update weight matrices.
             for i in range(len(self.connections)):
                 self.connections[i].W = self.connections[i].W - lr_alpha*(self.connections[i].delta_W/double(len(x)) + wd_lambda*self.connections[i].W)
@@ -423,53 +749,70 @@ class network:
         grad = np.zeros(np.shape(theta))
         
         #save gradients of actual weights.        
-        nabla = self.flattenGradients()
+        weights_orig = self.flattenWeights()
+        nabla_orig = self.flattenGradients()
 
-#        #For each weight individually, approximate gradient.
-#        for i in range(len(theta)):
-#            #Create modified theta vectors using e = [0,0,0,0,i=1,0,0].                
-#            e = np.zeros(np.shape(theta))
-#            e[i] = epsilon            
-#            thetaP = (theta + e)
-#            thetaN = (theta - e)
-#
-#            costP = 0.0
-#            costN = 0.0
-#            
-#            #calculate sum of cost for entire dataset.
-#
-#            wdP = wd_lambda/2.0*np.sum(np.power(thetaP,2.0))            
-#            self.deFlattenWeights(thetaP)             
-#            for j in range(len(x)):
-#                self.feedForward(x[j])
-#                #self.feedBack(y[j])
-#                costP += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[j], ord=2),2.0)
-#
-#            wdN = wd_lambda/2.0*np.sum(np.power(thetaN,2.0))                
-#            self.deFlattenWeights(thetaN)                
-#            for j in range(len(x)):
-#                self.feedForward(x[j])
-#                #self.feedBack(y[i])                
-#                costN += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[j], ord=2),2.0)
-#
-#        
-#
-#            #calculate approximate gradient from consts
-#            grad[i] = ( (costP/double(len(x)) + wdP) - (costN/double(len(x)) + wdN) )/(2.0*epsilon)             
+        #For each weight individually, approximate gradient.
+        for i in range(len(theta)):
+            #Create modified theta vectors using e = [0,0,0,0,i=1,0,0].                
+            e = np.zeros(np.shape(theta))
+            e[i] = epsilon            
+            thetaP = (theta + e)
+            thetaN = (theta - e)
+
+            costP = 0.0
+            costN = 0.0
             
-        #####################################################
+            #calculate sum of cost for entire dataset.
+
+            self.deFlattenWeights(thetaP)             
+            wdP = 0.0             
+            for j in range(len(self.connections)):
+                wdP += np.sum(np.power(self.connections[j].W,2.0))
+            wdP *= wd_lambda/2.0            
+            for j in range(len(x)):
+                self.feedForward(x[j])
+                #self.feedBack(y[j])
+                costP += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[j], ord=2),2.0)
+
+            self.deFlattenWeights(thetaN)
+            wdN = 0.0             
+            for j in range(len(self.connections)):
+                wdN += np.sum(np.power(self.connections[j].W,2.0))
+            wdN *= wd_lambda/2.0
+            for j in range(len(x)):
+                self.feedForward(x[j])
+                #self.feedBack(y[i])                
+                costN += 0.5*np.power(np.linalg.norm(self.layers[-1].a-y[j], ord=2),2.0)
+
+        
+
+            #calculate approximate gradient from consts
+            grad[i] = ( (costP/double(len(x)) + wdP) - (costN/double(len(x)) + wdN) )/(2.0*epsilon)             
+            
+        ####################################################
             
 #        #Update weight matrices.
 #        for i in range(len(self.connections)):
 #            self.connections[i].W = self.connections[i].W - lr_alpha*(self.connections[i].delta_W/double(len(x)) + wd_lambda*self.connections[i].W)
 #            self.connections[i].W_b = self.connections[i].W_b - lr_alpha*self.connections[i].delta_W_b/double(len(x))
-#   
+        self.deflattenWeights(weights_orig)
+        self.deFlattenGradients(nabla_orig)
         
-        weightSum =  np.sum(np.power(theta,2.0))
+        wd = 0.0             
+        for j in range(len(self.connections)):
+            wd += np.sum(np.power(self.connections[j].W,2.0))
+        wd *= wd_lambda/2.0            
         
-        finalCost = cost/double(len(x)) + wd_lambda/2.0*weightSum
+        finalCost = cost/double(len(x)) + wd
 
-        return (finalCost,np.abs(nabla-grad))
+        return (finalCost,np.abs(nabla_orig-grad))
+
+
+
+
+
+
         
     #feed ONE sample forward through
     def feedForward(self, x):
@@ -483,21 +826,7 @@ class network:
             self.layers[i+1].z = self.layers[i].a.dot(self.connections[i].W) + self.layers[i].b.dot(self.connections[i].W_b)            
             self.layers[i+1].a = 1.0/(1.0+np.exp(-self.layers[i+1].z))
             
-        
-        
-#
-#        #Feed forward
-#        z_h = x.dot(W_ih) + b.dot(W_bh)
-#        a_h = 1.0/(1.0+np.exp(-z_h))
-#
-#        a_h_mat[j] = a_h    
-#        
-#        z_o = a_h.dot(W_ho) + b.dot(W_bo)
-#        a_o = 1.0/(1.0+np.exp(-z_o))
-#
-#        a_o_mat[j] = a_o
-#
-#        e += 0.5*np.power(np.linalg.norm(a_o-y, ord=2),2.0)
+    
 
     def feedBack(self,y):
         #find error for output layer        
@@ -543,6 +872,64 @@ class network:
 #        delta_W_ih = delta_W_ih + grad_W_ih
 #        delta_W_bh = delta_W_bh + grad_W_bh
 
+
+    #feed ONE sample forward through
+    def feedForwardLog(self, x):
+#        x = concImgSamps[j]
+#        y = x
+#       
+                
+        #Feed values forward for each layer sequentially
+        self.layers[0].a = x 
+        for i in range(len(self.layers)-1-1):
+            self.layers[i+1].z = self.layers[i].a.dot(self.connections[i].W) + self.layers[i].b.dot(self.connections[i].W_b)            
+            self.layers[i+1].a = 1.0/(1.0+np.exp(-self.layers[i+1].z))
+           
+        #Final soft max layer
+        self.layers[-1].z = self.layers[-2].a.dot(self.connections[-1].W) + self.layers[-2].b.dot(self.connections[-1].W_b)            
+        sumP = np.sum(np.exp(self.layers[-1].z))        
+        self.layers[-1].a = np.exp(self.layers[-1].z)/sumP
+            
+        
+#
+#        #Feed forward
+#        z_h = x.dot(W_ih) + b.dot(W_bh)
+#        a_h = 1.0/(1.0+np.exp(-z_h))
+#
+#        a_h_mat[j] = a_h    
+#        
+#        z_o = a_h.dot(W_ho) + b.dot(W_bo)
+#        a_o = 1.0/(1.0+np.exp(-z_o))
+#
+#        a_o_mat[j] = a_o
+#
+#        e += 0.5*np.power(np.linalg.norm(a_o-y, ord=2),2.0)
+
+
+
+    def feedBackLog(self,y):
+        #find error for output layer        
+        for k in range(len(y)):
+            self.layers[-1].err[k] = -(y[k]-self.layers[-1].a[k])       
+        
+        #go through all hidden layers, i.e. not last and first layer, hence -1 and .pop(0)
+        seq = range(len(self.layers)-1)
+        seq.pop(0)        
+        for i in reversed(seq):
+            self.layers[i].err = (self.connections[i].W.dot(self.layers[i+1].err))*self.layers[i].a*(1.0-self.layers[i].a)                      
+        
+        #Calculate weights updates for each connection, based on this trainins example
+        for i in range(len(self.connections)):
+            #Calculate gradients from activations and the errors of the following layer.
+            grad_W = np.outer(self.layers[i].a,self.layers[i+1].err) #np.outer is used to force treating the vectors as matrices 9x1 * 1x9 = 9x9
+            grad_W_b = self.layers[i+1].err
+            
+            #Calc
+            self.connections[i].delta_W = self.connections[i].delta_W + grad_W
+            self.connections[i].delta_W_b = self.connections[i].delta_W_b + grad_W_b 
+
+
+
     def flattenWeights(self):
         theta = np.array([])
 
@@ -575,6 +962,16 @@ class network:
             self.connections[i].W_b = np.reshape(theta[count:count+W_b_shape[0]*W_b_shape[1]], (W_b_shape[0],W_b_shape[1]))
             count += W_b_shape[0]*W_b_shape[1]
             
+    def deFlattenGradients(self,theta):
+        count = 0
+        for i in range(len(self.connections)):
+            delta_W_shape = np.shape(self.connections[i].delta_W)
+            delta_W_b_shape = np.shape(self.connections[i].delta_W_b)
+            
+            self.connections[i].delta_W = np.reshape(theta[count:count+delta_W_shape[0]*delta_W_shape[1]], (delta_W_shape[0],delta_W_shape[1]))
+            count += delta_W_shape[0]*delta_W_shape[1]
+            self.connections[i].delta_W_b = np.reshape(theta[count:count+delta_W_b_shape[0]*delta_W_b_shape[1]], (delta_W_b_shape[0],delta_W_b_shape[1]))
+            count += delta_W_b_shape[0]*delta_W_b_shape[1]
        
 
 class layer:
